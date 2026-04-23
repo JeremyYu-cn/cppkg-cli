@@ -1,16 +1,14 @@
 import type { GetPkgOptions, InstalledDependency } from "../types/global";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
-import {
-  resolvePackageRootPath,
-} from "../public/packagePath";
+import { resolvePackageRootPath } from "../public/packagePath";
 import {
   getTrackedInstallPaths,
   normalizeTrackedPath,
   readInstalledDependencies,
   writeInstalledDependencies,
 } from "./deps";
-import { getVCPkg } from "./download";
+import { getVCPkg } from "./download/main";
 
 type RemoveFilesResult = {
   installPath: string;
@@ -109,7 +107,10 @@ function resolveInstalledDependency(
  * Converts a tracked install path back into a filesystem path under the include root.
  */
 function toFilesystemPath(includeRootPath: string, trackedPath: string) {
-  return path.join(includeRootPath, ...normalizeTrackedPath(trackedPath).split("/"));
+  return path.join(
+    includeRootPath,
+    ...normalizeTrackedPath(trackedPath).split("/"),
+  );
 }
 
 /**
@@ -156,10 +157,15 @@ async function removeDependencyFiles(
   dependency: InstalledDependency,
   otherDependencies: InstalledDependency[],
 ): Promise<RemoveFilesResult> {
-  const installRootPath = path.resolve(process.cwd(), dependency.install.target);
+  const installRootPath = path.resolve(
+    process.cwd(),
+    dependency.install.target,
+  );
   const installPath =
     path.relative(process.cwd(), installRootPath) || dependency.install.target;
-  const ownPaths = getTrackedInstallPaths(dependency).sort(compareByDepthDescending);
+  const ownPaths = getTrackedInstallPaths(dependency).sort(
+    compareByDepthDescending,
+  );
   const otherClaimedPaths = new Set(
     otherDependencies
       .filter(
@@ -277,10 +283,15 @@ export async function removeInstalledPackage(selector: string) {
   const installed = await readInstalledDependencies();
 
   if (!installed.dependencies.length) {
-    throw new Error(`No installed packages found in ${resolvePackageRootPath()}`);
+    throw new Error(
+      `No installed packages found in ${resolvePackageRootPath()}`,
+    );
   }
 
-  const dependency = resolveInstalledDependency(installed.dependencies, selector);
+  const dependency = resolveInstalledDependency(
+    installed.dependencies,
+    selector,
+  );
   const remainingDependencies = installed.dependencies.filter(
     (item) => item.repository.path !== dependency.repository.path,
   );
@@ -298,7 +309,7 @@ export async function removeInstalledPackage(selector: string) {
 }
 
 /**
- * Refreshes one tracked package or every tracked package by reinstalling from GitHub releases.
+ * Refreshes one tracked package or every tracked package by reinstalling from GitHub.
  */
 export async function updateInstalledPackages(
   selector: string | undefined,
@@ -314,14 +325,20 @@ export async function updateInstalledPackages(
   }
 
   const targetRepositoryPaths = selector
-    ? [resolveInstalledDependency(installed.dependencies, selector).repository.path]
+    ? [
+        resolveInstalledDependency(installed.dependencies, selector).repository
+          .path,
+      ]
     : installed.dependencies.map((dependency) => dependency.repository.path);
 
   const updatedDependencies: InstalledDependency[] = [];
 
   for (const repositoryPath of targetRepositoryPaths) {
     const current = await readInstalledDependencies();
-    const dependency = resolveInstalledDependency(current.dependencies, repositoryPath);
+    const dependency = resolveInstalledDependency(
+      current.dependencies,
+      repositoryPath,
+    );
     const otherDependencies = current.dependencies.filter(
       (item) => item.repository.path !== dependency.repository.path,
     );
@@ -340,10 +357,7 @@ export async function updateInstalledPackages(
       );
     }
 
-    await getVCPkg(dependency.repository.url, {
-      ...options,
-      fullProject: dependency.type === "need-compile",
-    });
+    await getVCPkg(dependency.repository.url, options);
     updatedDependencies.push(dependency);
   }
 

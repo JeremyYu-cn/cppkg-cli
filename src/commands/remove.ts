@@ -7,7 +7,7 @@ import { removeInstalledPackage } from "../tools/manage";
 export function registerRemoveCommand(program: Command) {
   program
     .command("remove")
-    .description("Remove an installed package from ./cpp_libs/include and deps.json")
+    .description("Remove an installed package from ./cpp_libs and deps.json")
     .argument(
       "<package>",
       "Installed package name, repository path, owner/repo, or GitHub repository URL",

@@ -40,13 +40,28 @@ function getUniqueSortedPaths(paths: string[]) {
 }
 
 /**
+ * Collapses tracked paths to their top-level installed entry names.
+ */
+function getUniqueSortedTopLevelPaths(paths: string[]) {
+  return getUniqueSortedPaths(paths.map((targetPath) => {
+    const normalizedPath = normalizeTrackedPath(targetPath);
+
+    return normalizedPath.split("/").filter(Boolean)[0] ?? normalizedPath;
+  }));
+}
+
+/**
  * Fills backward-compatible defaults for dependency install metadata.
  */
 function normalizeInstalledDependency(
   dependency: InstalledDependency,
 ): InstalledDependency {
-  const headers = getUniqueSortedPaths(dependency.install?.headers ?? []);
-  const paths = getUniqueSortedPaths(
+  const headersSource =
+    dependency.install?.headers?.length
+      ? dependency.install.headers
+      : dependency.install?.paths ?? [];
+  const headers = getUniqueSortedTopLevelPaths(headersSource);
+  const paths = getUniqueSortedTopLevelPaths(
     dependency.install?.paths?.length ? dependency.install.paths : headers,
   );
 
@@ -61,7 +76,7 @@ function normalizeInstalledDependency(
 }
 
 /**
- * Returns the tracked file paths recorded for one installed package.
+ * Returns the tracked top-level installed paths recorded for one package.
  */
 export function getTrackedInstallPaths(dependency: InstalledDependency) {
   return dependency.install.paths;

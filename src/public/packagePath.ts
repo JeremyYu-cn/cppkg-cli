@@ -41,14 +41,14 @@ export function getPublicIncludePath() {
 }
 
 /**
- * Resolves the root directory used to store extracted full-project sources.
+ * Resolves the root directory used to store extracted project sources.
  */
 export function resolveProjectsRootPath() {
   return path.join(resolvePackageRootPath(), "projects");
 }
 
 /**
- * Returns the full-project root path and creates it when necessary.
+ * Returns the project source root path and creates it when necessary.
  */
 export function getProjectsRootPath() {
   return ensureDir(resolveProjectsRootPath());

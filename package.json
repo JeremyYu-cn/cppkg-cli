@@ -1,7 +1,7 @@
 {
   "name": "cppkg-cli",
-  "version": "0.0.2",
-  "description": "CLI for downloading header-only C/C++ packages into a shared include directory",
+  "version": "0.0.3",
+  "description": "CLI for downloading C/C++ packages into a shared include directory or project workspace",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
   "bin": {
