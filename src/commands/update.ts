@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { updateInstalledPackages } from "../tools/manage";
+import { logger } from "../tools/logger";
 
 /**
  * Registers the command that refreshes one tracked package or all of them.
@@ -27,6 +28,6 @@ export function registerUpdateCommand(program: Command) {
         return;
       }
 
-      console.log(`Updated ${result.updatedDependencies.length} package(s).`);
+      logger.success(`Updated ${result.updatedDependencies.length} package(s).`);
     });
 }

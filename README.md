@@ -20,7 +20,7 @@ npm run dev -- get https://github.com/nlohmann/json
 ### Usage
 
 ```bash
-cppkg-cli get <source-url>
+cppkg-cli get <source-url...>
 cppkg-cli list
 cppkg-cli remove <selector>
 cppkg-cli update [selector]
@@ -34,6 +34,12 @@ Install a package:
 ```bash
 cppkg-cli get https://github.com/nlohmann/json
 cppkg-cli get https://github.com/fmtlib/fmt
+```
+
+Install multiple packages in one command by separating sources with spaces:
+
+```bash
+cppkg-cli get https://github.com/nlohmann/json https://github.com/fmtlib/fmt
 ```
 
 Install using a GitHub API repository URL:
@@ -150,7 +156,7 @@ your-project/
 
 Behavior:
 
-- `cppkg-cli get` accepts GitHub repository URLs, GitHub API repository URLs, Gitee repository URLs, Gitee API repository URLs, and direct remote zip archive URLs.
+- `cppkg-cli get` accepts one or more sources separated by spaces. Each source can be a GitHub repository URL, GitHub API repository URL, Gitee repository URL, Gitee API repository URL, or direct remote zip archive URL.
 - GitHub and Gitee repository inputs are checked for a published release through the corresponding provider API.
 - If a release exists, the CLI first tries to install reusable headers into the configured include directory, which defaults to `./cpp_libs/include`.
 - `cppkg-cli get --full-project` skips include-directory detection and installs the repository as a full project directly.

@@ -11,6 +11,7 @@ import path from "node:path";
 import { prepareArchive } from "./archive";
 import { installIncludePackage } from "./include";
 import { installProjectPackage } from "./project";
+import { logger } from "../logger";
 import {
   fetchGiteeRepository,
   fetchGitHubRepository,
@@ -88,10 +89,10 @@ async function installReleaseAwareRepository<TRelease extends ProviderRelease>(
     tempDir,
   } = context;
 
-  console.log(`Resolving install mode for ${repoPath}`);
+  logger.info(`Resolving install mode for ${repoPath}`);
 
   if (options.fullProject) {
-    console.log(
+    logger.info(
       `Forced full-project install enabled for ${repoPath}, skipping include-directory detection`,
     );
 
@@ -107,7 +108,7 @@ async function installReleaseAwareRepository<TRelease extends ProviderRelease>(
   }
 
   if (!release) {
-    console.log(
+    logger.warn(
       `No published release found for ${repoPath}, installing the repository archive from ${repositoryArchive.label.replace(/\.zip$/i, "")}`,
     );
 
@@ -122,7 +123,7 @@ async function installReleaseAwareRepository<TRelease extends ProviderRelease>(
     return;
   }
 
-  console.log(
+  logger.info(
     `Found release ${release.tag_name || release.name || "latest"}, installing reusable headers`,
   );
 
@@ -158,8 +159,8 @@ export async function getVCPkg(repoURL: string, options: GetPkgOptions = {}) {
 
   try {
     if (inputSource.kind === "archive-url") {
-      console.log(`Resolving install mode for ${inputSource.repositoryUrl}`);
-      console.log(
+      logger.info(`Resolving install mode for ${inputSource.repositoryUrl}`);
+      logger.info(
         `No GitHub releases API is available for ${inputSource.repositoryUrl}, installing the archive as a full project`,
       );
 

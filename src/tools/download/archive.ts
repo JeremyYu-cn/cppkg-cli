@@ -7,6 +7,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import unzipper from "unzipper";
+import { logger } from "../logger";
 import { getRequestProxy } from "../request";
 import { collectIncludeDirs } from "./include";
 
@@ -65,7 +66,7 @@ async function downloadArchive(
 
   if (contentType.includes("text/html")) {
     (res.data as NodeJS.ReadableStream & { destroy?: () => void }).destroy?.();
-    console.log("Remote host returned HTML for the archive request, retrying with curl");
+    logger.warn("Remote host returned HTML for the archive request, retrying with curl");
     await downloadArchiveWithCurl(url, archivePath);
     return;
   }
@@ -85,7 +86,7 @@ async function downloadArchive(
 
     if (percent >= lastLoggedPercent + 10 || percent === 100) {
       lastLoggedPercent = percent;
-      console.log(`Downloading: ${percent}%`);
+      logger.progress(`Downloading: ${percent}%`);
     }
   });
 
@@ -131,7 +132,7 @@ export async function prepareArchive(
   await fsp.rm(archivePath, { force: true });
   await fsp.rm(extractPath, { force: true, recursive: true });
 
-  console.log(
+  logger.info(
     archive.kind === "github-release" || archive.kind === "gitee-release"
       ? `Trying release archive ${archive.label}`
       : archive.kind === "github-repository" ||
@@ -141,7 +142,7 @@ export async function prepareArchive(
   );
 
   await downloadArchive(archive.url, archivePath, options);
-  console.log("Download complete, extracting archive");
+  logger.progress("Download complete, extracting archive");
 
   await extractZipArchive(archivePath, extractPath);
   const sourceRootPath = await getPrimaryExtractedRoot(extractPath);

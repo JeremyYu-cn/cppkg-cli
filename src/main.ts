@@ -6,6 +6,7 @@ import { registerGetCommand } from "./commands/get";
 import { registerListCommand } from "./commands/list";
 import { registerRemoveCommand } from "./commands/remove";
 import { registerUpdateCommand } from "./commands/update";
+import { logger } from "./tools/logger";
 
 /**
  * Bootstraps the CLI and registers all supported commands.
@@ -31,6 +32,6 @@ async function main() {
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`cppkg-cli failed: ${message}`);
+  logger.error(`cppkg-cli failed: ${message}`);
   process.exitCode = 1;
 });

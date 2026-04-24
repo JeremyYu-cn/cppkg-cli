@@ -10,6 +10,21 @@ import { getDepsFilePath } from "../public/packagePath";
 const EMPTY_DEPENDENCIES_FILE: InstalledDependenciesFile = {
   dependencies: [],
 };
+let dependencyMetadataQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Serializes read-modify-write dependency metadata updates within one CLI process.
+ */
+async function queueDependencyMetadataUpdate<T>(operation: () => Promise<T>) {
+  const queuedOperation = dependencyMetadataQueue.then(operation, operation);
+
+  dependencyMetadataQueue = queuedOperation.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return queuedOperation;
+}
 
 /**
  * Keeps dependency records stable by sorting them by name and repository path.
@@ -151,12 +166,14 @@ export async function writeInstalledDependencies(
 export async function upsertInstalledDependency(
   dependency: InstalledDependency,
 ) {
-  const installed = await readInstalledDependencies();
-  const dependencies = installed.dependencies.filter(
-    (item) => item.repository.path !== dependency.repository.path,
-  );
+  return queueDependencyMetadataUpdate(async () => {
+    const installed = await readInstalledDependencies();
+    const dependencies = installed.dependencies.filter(
+      (item) => item.repository.path !== dependency.repository.path,
+    );
 
-  dependencies.push(normalizeInstalledDependency(dependency));
+    dependencies.push(normalizeInstalledDependency(dependency));
 
-  await writeInstalledDependencies(dependencies);
+    await writeInstalledDependencies(dependencies);
+  });
 }

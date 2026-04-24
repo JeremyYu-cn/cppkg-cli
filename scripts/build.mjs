@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { createRequire } from "node:module";
+import pc from "picocolors";
 
 const require = createRequire(import.meta.url);
 const tscBinPath = require.resolve("typescript/bin/tsc");
@@ -34,6 +35,6 @@ async function runBuild() {
 
 runBuild().catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
+  process.stderr.write(`${pc.red(pc.bold("[error]"))} ${message}\n`);
   process.exitCode = 1;
 });

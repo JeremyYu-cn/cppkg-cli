@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { removeInstalledPackage } from "../tools/manage";
+import { logger } from "../tools/logger";
 
 /**
  * Registers the command that removes one installed package by selector.
@@ -15,11 +16,11 @@ export function registerRemoveCommand(program: Command) {
     .action(async (selector) => {
       const result = await removeInstalledPackage(selector);
 
-      console.log(`Removed ${result.dependency.name} from ${result.installPath}.`);
-      console.log(`Deleted tracked paths: ${result.removedPaths.length}`);
+      logger.success(`Removed ${result.dependency.name} from ${result.installPath}.`);
+      logger.detail("Deleted tracked paths", result.removedPaths.length);
 
       if (result.skippedPaths.length) {
-        console.log(
+        logger.warn(
           `Preserved shared paths: ${result.skippedPaths.join(", ")}`,
         );
       }

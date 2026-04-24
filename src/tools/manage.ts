@@ -9,6 +9,7 @@ import {
   writeInstalledDependencies,
 } from "./deps";
 import { getVCPkg } from "./download/main";
+import { logger } from "./logger";
 
 type RemoveFilesResult = {
   installPath: string;
@@ -318,7 +319,7 @@ export async function updateInstalledPackages(
   const installed = await readInstalledDependencies();
 
   if (!installed.dependencies.length) {
-    console.log(`No installed packages found in ${resolvePackageRootPath()}.`);
+    logger.warn(`No installed packages found in ${resolvePackageRootPath()}.`);
     return {
       updatedDependencies: [],
     };
@@ -347,12 +348,12 @@ export async function updateInstalledPackages(
       otherDependencies,
     );
 
-    console.log(
+    logger.info(
       `Refreshing ${dependency.name} from ${dependency.repository.url} (${removeResult.removedPaths.length} tracked paths cleaned)`,
     );
 
     if (removeResult.skippedPaths.length) {
-      console.log(
+      logger.warn(
         `Preserved ${removeResult.skippedPaths.length} shared path(s): ${removeResult.skippedPaths.join(", ")}`,
       );
     }

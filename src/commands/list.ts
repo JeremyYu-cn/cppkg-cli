@@ -2,6 +2,7 @@ import { Command } from "commander";
 import path from "node:path";
 import { resolvePackageRootPath } from "../public/packagePath";
 import { readInstalledDependencies } from "../tools/deps";
+import { logger } from "../tools/logger";
 
 /**
  * Registers the command that prints tracked packages from the configured deps file.
@@ -16,12 +17,12 @@ export function registerListCommand(program: Command) {
         path.relative(process.cwd(), resolvePackageRootPath()) || ".";
 
       if (!installed.dependencies.length) {
-        console.log(`No installed packages found in ${packageRootPath}.`);
+        logger.warn(`No installed packages found in ${packageRootPath}.`);
         return;
       }
 
-      console.log(`Installed packages in ${packageRootPath}:`);
-      console.table(
+      logger.info(`Installed packages in ${packageRootPath}:`);
+      logger.table(
         installed.dependencies.map((dependency) => ({
           name: dependency.name,
           mode: dependency.install.mode,

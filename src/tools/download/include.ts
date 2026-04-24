@@ -4,6 +4,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { getPublicIncludePath } from "../../public/packagePath";
 import { normalizeTrackedPath, upsertInstalledDependency } from "../deps";
+import { logger } from "../logger";
 import { buildInstalledDependency } from "./metadata";
 
 const HEADER_EXTENSIONS = new Set([
@@ -129,9 +130,10 @@ export async function installIncludePackage(
 
   await upsertInstalledDependency(installedDependency);
 
-  console.log(`Installed ${inputSource.packageName} into ${installPath}`);
-  console.log(`Headers: ${installed.headers.join(", ")}`);
-  console.log(
-    `Recorded dependency metadata in ${path.relative(process.cwd(), path.join(installRootPath, "..", "deps.json"))}`,
+  logger.success(`Installed ${inputSource.packageName} into ${installPath}`);
+  logger.detail("Headers", installed.headers.join(", "));
+  logger.detail(
+    "Recorded dependency metadata in",
+    path.relative(process.cwd(), path.join(installRootPath, "..", "deps.json")),
   );
 }

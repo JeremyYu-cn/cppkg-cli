@@ -3,6 +3,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { getProjectsRootPath } from "../../public/packagePath";
 import { normalizeTrackedPath, upsertInstalledDependency } from "../deps";
+import { logger } from "../logger";
 import { buildInstalledDependency } from "./metadata";
 
 /**
@@ -69,11 +70,12 @@ export async function installProjectPackage(
 
   await upsertInstalledDependency(installedDependency);
 
-  console.log(
+  logger.success(
     `Installed full project ${inputSource.packageName} into ${installPath}`,
   );
-  console.log(`Entries: ${installed.headers.join(", ")}`);
-  console.log(
-    `Recorded dependency metadata in ${path.relative(process.cwd(), path.join(projectsRootPath, "..", "deps.json"))}`,
+  logger.detail("Entries", installed.headers.join(", "));
+  logger.detail(
+    "Recorded dependency metadata in",
+    path.relative(process.cwd(), path.join(projectsRootPath, "..", "deps.json")),
   );
 }

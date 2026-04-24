@@ -7,6 +7,7 @@ import {
   removeConfigValue,
   setConfigValue,
 } from "../public/config";
+import { logger } from "../tools/logger";
 
 function formatConfigValue(value: string) {
   return JSON.stringify(value);
@@ -22,7 +23,7 @@ export function registerConfigCommand(program: Command) {
     .description("Print one resolved config value")
     .argument("<key>", "config key")
     .action((key) => {
-      console.log(getConfigValue(key));
+      logger.raw(getConfigValue(key));
     });
 
   configProgram
@@ -35,8 +36,8 @@ export function registerConfigCommand(program: Command) {
       const configFilePath =
         path.relative(process.cwd(), getConfigFilePath()) || "cppkg.config.json";
 
-      console.log(`Set ${result.key}=${result.value}`);
-      console.log(`Saved to ${configFilePath}`);
+      logger.success(`Set ${result.key}=${result.value}`);
+      logger.detail("Saved to", configFilePath);
     });
 
   configProgram
@@ -46,8 +47,8 @@ export function registerConfigCommand(program: Command) {
       const configFilePath =
         path.relative(process.cwd(), getConfigFilePath()) || "cppkg.config.json";
 
-      console.log(`Resolved config for ${configFilePath}:`);
-      console.table(listConfigEntries());
+      logger.info(`Resolved config for ${configFilePath}:`);
+      logger.table(listConfigEntries());
     });
 
   configProgram
@@ -58,13 +59,13 @@ export function registerConfigCommand(program: Command) {
       const result = removeConfigValue(key);
 
       if (!result.hadValue) {
-        console.log(
+        logger.warn(
           `${result.key} is already using its default value: ${formatConfigValue(result.value)}`,
         );
         return;
       }
 
-      console.log(
+      logger.success(
         `Removed ${result.key}; current default is ${formatConfigValue(result.value)}`,
       );
     });

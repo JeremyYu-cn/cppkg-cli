@@ -20,7 +20,7 @@ npm run dev -- get https://github.com/nlohmann/json
 ### 使用
 
 ```bash
-cppkg-cli get <source-url>
+cppkg-cli get <source-url...>
 cppkg-cli list
 cppkg-cli remove <selector>
 cppkg-cli update [selector]
@@ -34,6 +34,12 @@ cppkg-cli config <get|set|list|remove>
 ```bash
 cppkg-cli get https://github.com/nlohmann/json
 cppkg-cli get https://github.com/fmtlib/fmt
+```
+
+通过空格分隔，一次安装多个包：
+
+```bash
+cppkg-cli get https://github.com/nlohmann/json https://github.com/fmtlib/fmt
 ```
 
 使用 GitHub API 仓库地址安装：
@@ -150,7 +156,7 @@ your-project/
 
 处理规则：
 
-- `cppkg-cli get` 支持 GitHub 仓库 URL、GitHub API 仓库 URL、Gitee 仓库 URL、Gitee API 仓库 URL，以及直接远程 zip 压缩包 URL。
+- `cppkg-cli get` 支持通过空格分隔传入一个或多个来源地址。每个来源地址都可以是 GitHub 仓库 URL、GitHub API 仓库 URL、Gitee 仓库 URL、Gitee API 仓库 URL，或直接远程 zip 压缩包 URL。
 - 对于 GitHub 和 Gitee 仓库输入，CLI 会先通过对应平台的 API 检查仓库是否存在已发布的 release。
 - 如果存在 release，会先尝试按头文件包处理并安装到当前配置的 include 目录，默认是 `./cpp_libs/include`。
 - `cppkg-cli get --full-project` 会跳过 `include` 目录探测，直接按完整项目安装。
