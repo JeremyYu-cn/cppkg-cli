@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { resolveCliConfig } from "./config";
 
 /**
  * Creates a directory when it does not exist and returns the same path.
@@ -16,7 +17,7 @@ function ensureDir(dirPath: string) {
  * Resolves the root directory used to store package data in the current project.
  */
 export function resolvePackageRootPath() {
-  return path.resolve(process.cwd(), "cpp_libs");
+  return path.resolve(process.cwd(), resolveCliConfig().packageRootDir);
 }
 
 /**
@@ -30,7 +31,10 @@ export function getPackageRootPath() {
  * Resolves the shared include directory path without creating it.
  */
 export function resolvePublicIncludePath() {
-  return path.join(resolvePackageRootPath(), "include");
+  return path.join(
+    resolvePackageRootPath(),
+    resolveCliConfig().includeDirName,
+  );
 }
 
 /**
@@ -44,7 +48,10 @@ export function getPublicIncludePath() {
  * Resolves the root directory used to store extracted project sources.
  */
 export function resolveProjectsRootPath() {
-  return path.join(resolvePackageRootPath(), "projects");
+  return path.join(
+    resolvePackageRootPath(),
+    resolveCliConfig().projectsDirName,
+  );
 }
 
 /**
@@ -55,8 +62,8 @@ export function getProjectsRootPath() {
 }
 
 /**
- * Returns the path of the dependency metadata file stored under cpp_libs.
+ * Returns the path of the dependency metadata file stored under the configured package root.
  */
 export function getDepsFilePath() {
-  return path.join(resolvePackageRootPath(), "deps.json");
+  return path.join(resolvePackageRootPath(), resolveCliConfig().depsFileName);
 }

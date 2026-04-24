@@ -1,6 +1,6 @@
 {
   "name": "cppkg-cli",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CLI for downloading C/C++ packages into a shared include directory or project workspace",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",

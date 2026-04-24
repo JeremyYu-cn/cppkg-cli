@@ -357,7 +357,11 @@ export async function updateInstalledPackages(
       );
     }
 
-    await getVCPkg(dependency.repository.url, options);
+    await getVCPkg(dependency.repository.url, {
+      ...options,
+      fullProject:
+        options.fullProject || dependency.install.mode === "full-project",
+    });
     updatedDependencies.push(dependency);
   }
 

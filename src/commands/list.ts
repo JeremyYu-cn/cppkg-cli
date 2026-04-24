@@ -4,16 +4,16 @@ import { resolvePackageRootPath } from "../public/packagePath";
 import { readInstalledDependencies } from "../tools/deps";
 
 /**
- * Registers the command that prints tracked packages from cpp_libs/deps.json.
+ * Registers the command that prints tracked packages from the configured deps file.
  */
 export function registerListCommand(program: Command) {
   program
     .command("list")
-    .description("List installed packages tracked in ./cpp_libs/deps.json")
+    .description("List installed packages tracked in the configured deps file")
     .action(async () => {
       const installed = await readInstalledDependencies();
       const packageRootPath =
-        path.relative(process.cwd(), resolvePackageRootPath()) || "cpp_libs";
+        path.relative(process.cwd(), resolvePackageRootPath()) || ".";
 
       if (!installed.dependencies.length) {
         console.log(`No installed packages found in ${packageRootPath}.`);
@@ -24,6 +24,7 @@ export function registerListCommand(program: Command) {
       console.table(
         installed.dependencies.map((dependency) => ({
           name: dependency.name,
+          mode: dependency.install.mode,
           type: dependency.type,
           version: dependency.version,
           installedAt: dependency.installedAt,

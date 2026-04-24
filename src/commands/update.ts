@@ -14,8 +14,12 @@ export function registerUpdateCommand(program: Command) {
       "[package]",
       "Installed package name, repository path, owner/repo, or GitHub repository URL",
     )
-    .option("--http-proxy <url>", "HTTP request proxy")
-    .option("--https-proxy <url>", "HTTPS request proxy")
+    .option(
+      "--full-project",
+      "Force full-project reinstall; without this flag the recorded install mode is reused",
+    )
+    .option("--http-proxy <url>", "HTTP request proxy, overrides config")
+    .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
     .action(async (selector, options) => {
       const result = await updateInstalledPackages(selector, options);
 

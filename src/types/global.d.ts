@@ -1,6 +1,7 @@
 export type GetPkgOptions = {
   httpProxy?: string;
   httpsProxy?: string;
+  fullProject?: boolean;
 };
 
 export type InstalledDependency = {
@@ -28,6 +29,7 @@ export type InstalledDependency = {
     archiveUrl: string;
   };
   install: {
+    mode: "include" | "full-project";
     target: string;
     headers: string[];
     paths: string[];

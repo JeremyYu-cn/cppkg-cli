@@ -4,6 +4,7 @@ import type {
 } from "../types/global";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
+import { getDefaultInstallTarget } from "../public/config";
 import { getDepsFilePath } from "../public/packagePath";
 
 const EMPTY_DEPENDENCIES_FILE: InstalledDependenciesFile = {
@@ -56,6 +57,9 @@ function getUniqueSortedTopLevelPaths(paths: string[]) {
 function normalizeInstalledDependency(
   dependency: InstalledDependency,
 ): InstalledDependency {
+  const installMode =
+    dependency.install?.mode ||
+    (dependency.type === "need-compile" ? "full-project" : "include");
   const headersSource =
     dependency.install?.headers?.length
       ? dependency.install.headers
@@ -68,7 +72,8 @@ function normalizeInstalledDependency(
   return {
     ...dependency,
     install: {
-      target: dependency.install?.target || "cpp_libs/include",
+      mode: installMode,
+      target: dependency.install?.target || getDefaultInstallTarget(),
       headers,
       paths,
     },

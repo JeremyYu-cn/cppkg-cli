@@ -64,6 +64,7 @@ export async function installProjectPackage(
     installed.headers,
     installed.paths,
     "need-compile",
+    "full-project",
   );
 
   await upsertInstalledDependency(installedDependency);

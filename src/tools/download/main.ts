@@ -90,6 +90,22 @@ async function installReleaseAwareRepository<TRelease extends ProviderRelease>(
 
   console.log(`Resolving install mode for ${repoPath}`);
 
+  if (options.fullProject) {
+    console.log(
+      `Forced full-project install enabled for ${repoPath}, skipping include-directory detection`,
+    );
+
+    const prepared = await prepareArchive(
+      tempDir,
+      packageName,
+      repositoryArchive,
+      "project",
+      options,
+    );
+    await installProjectPackage(inputSource, release, prepared);
+    return;
+  }
+
   if (!release) {
     console.log(
       `No published release found for ${repoPath}, installing the repository archive from ${repositoryArchive.label.replace(/\.zip$/i, "")}`,

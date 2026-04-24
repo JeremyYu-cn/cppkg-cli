@@ -41,56 +41,25 @@ async function directoryContainsHeaders(dirPath: string): Promise<boolean> {
 }
 
 /**
- * Computes relative path depth so nested include directories can be ranked.
- */
-function getDepth(rootPath: string, targetPath: string) {
-  return path.relative(rootPath, targetPath).split(path.sep).filter(Boolean)
-    .length;
-}
-
-/**
  * Finds the most relevant include directories inside an extracted archive.
  */
 export async function collectIncludeDirs(rootPath: string): Promise<string[]> {
+  const entries = await fsp.readdir(rootPath, { withFileTypes: true });
   const includeDirs: string[] = [];
 
-  /**
-   * Walks the extracted archive tree and collects candidate include directories.
-   */
-  async function walk(dirPath: string): Promise<void> {
-    const entries = await fsp.readdir(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name !== "include") {
+      continue;
+    }
 
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name === "__MACOSX") {
-        continue;
-      }
+    const entryPath = path.join(rootPath, entry.name);
 
-      const entryPath = path.join(dirPath, entry.name);
-
-      if (entry.name === "include") {
-        if (await directoryContainsHeaders(entryPath)) {
-          includeDirs.push(entryPath);
-        }
-        continue;
-      }
-
-      await walk(entryPath);
+    if (await directoryContainsHeaders(entryPath)) {
+      includeDirs.push(entryPath);
     }
   }
 
-  await walk(rootPath);
-
-  if (!includeDirs.length) {
-    return [];
-  }
-
-  const minDepth = Math.min(
-    ...includeDirs.map((includeDir) => getDepth(rootPath, includeDir)),
-  );
-
-  return includeDirs.filter(
-    (includeDir) => getDepth(rootPath, includeDir) === minDepth,
-  );
+  return includeDirs;
 }
 
 /**
@@ -155,6 +124,7 @@ export async function installIncludePackage(
     installed.headers,
     installed.paths,
     "header-only",
+    "include",
   );
 
   await upsertInstalledDependency(installedDependency);

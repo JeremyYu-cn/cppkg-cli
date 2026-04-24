@@ -16,6 +16,7 @@ export function buildInstalledDependency(
   installedHeaders: string[],
   installedPaths: string[],
   installType: InstalledDependency["type"],
+  installMode: InstalledDependency["install"]["mode"],
 ): InstalledDependency {
   const releaseMetadata =
     archive.kind === "github-release" || archive.kind === "gitee-release"
@@ -45,6 +46,7 @@ export function buildInstalledDependency(
       archiveUrl: archive.url,
     },
     install: {
+      mode: installMode,
       target: installPath,
       headers: installedHeaders,
       paths: installedPaths,

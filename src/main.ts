@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { registerConfigCommand } from "./commands/config";
 import { registerGetCommand } from "./commands/get";
 import { registerListCommand } from "./commands/list";
 import { registerRemoveCommand } from "./commands/remove";
@@ -17,12 +18,13 @@ async function main() {
     .description(
       "Download C/C++ packages into a shared include directory or project workspace",
     )
-    .version("0.0.4");
+    .version("0.0.5");
 
   registerGetCommand(program);
   registerListCommand(program);
   registerRemoveCommand(program);
   registerUpdateCommand(program);
+  registerConfigCommand(program);
 
   await program.parseAsync();
 }
