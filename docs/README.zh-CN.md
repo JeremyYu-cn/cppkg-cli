@@ -2,99 +2,150 @@
 
 [English](../README.md)
 
-这是一个面向 C/C++ 包的下载 CLI，支持 GitHub、Gitee 和通用远程 zip 压缩包。默认情况下，带有已发布 release 的仓库，如果归档里存在可用的 `include` 目录，就会按头文件包安装到 `./cpp_libs/include`；如果没有可用的 `include` 目录，则会回退成完整项目安装到 `./cpp_libs/projects`。没有 release 的仓库，以及直接给出的远程 zip 压缩包 URL，也会被当成完整项目解压到 `./cpp_libs/projects`。这些路径以及默认代理现在都可以通过 `cppkg-cli config` 修改。
+`cppkg-cli` 是一个面向 C/C++ 包的下载 CLI，可以从 GitHub、Gitee 或远程 zip 压缩包安装包到当前项目目录。它会优先把可复用头文件安装到共享 include 目录；如果包不适合按头文件使用，则回退为完整项目解压。
 
-### 安装
+## 安装
 
 ```bash
 npm install -g cppkg-cli
 ```
 
-在仓库里本地调试：
+在仓库里本地开发：
 
 ```bash
 npm install
-npm run dev -- get https://github.com/nlohmann/json
+npm run dev -- --help
 ```
 
-### 使用
+## 快速开始
+
+创建项目包管理文件：
 
 ```bash
-cppkg-cli get <source-url...>
-cppkg-cli list
-cppkg-cli remove <selector>
-cppkg-cli update [selector]
-cppkg-cli config <get|set|list|remove>
+cppkg-cli init
 ```
 
-示例：
+在 `cppkg.json` 里添加依赖：
 
-安装一个包：
+```json
+{
+  "dependencies": {
+    "json": "https://github.com/nlohmann/json",
+    "fmt": {
+      "source": "https://github.com/fmtlib/fmt",
+      "tag": "11.2.0"
+    },
+    "lvgl": {
+      "source": "https://github.com/lvgl/lvgl",
+      "branch": "master",
+      "fullProject": true
+    }
+  }
+}
+```
+
+安装 manifest 里的全部依赖：
+
+```bash
+cppkg-cli install
+```
+
+只安装指定 manifest 条目：
+
+```bash
+cppkg-cli install json fmt
+```
+
+默认配置下，安装内容会写到 `./cpp_libs`，安装元数据会写到 `./cpp_libs/deps.json`。
+
+## 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `cppkg-cli init` | 创建 `./cppkg.json`。 |
+| `cppkg-cli install [selector...]` | 安装全部 manifest 依赖，或只安装选中的 manifest 条目。 |
+| `cppkg-cli get <source-url...>` | 直接安装一个或多个包来源。 |
+| `cppkg-cli list` | 查看 `deps.json` 中记录的已安装包。 |
+| `cppkg-cli update [selector]` | 更新一个已安装包；不传 selector 时更新全部包。 |
+| `cppkg-cli remove <selector>` | 删除一个已安装包。 |
+| `cppkg-cli config <subcommand>` | 管理 `./cppkg.config.json` 中的项目级默认配置。 |
+
+每个命令都可以加 `--help` 查看当前支持的选项。
+
+## Manifest
+
+`cppkg.json` 支持依赖名到来源的映射写法：
+
+```json
+{
+  "dependencies": {
+    "json": "https://github.com/nlohmann/json",
+    "fmt": {
+      "source": "https://github.com/fmtlib/fmt",
+      "tag": "11.2.0"
+    }
+  }
+}
+```
+
+也支持数组写法：
+
+```json
+{
+  "dependencies": [
+    "https://github.com/nlohmann/json",
+    {
+      "name": "lvgl",
+      "source": "https://github.com/lvgl/lvgl",
+      "branch": "master",
+      "fullProject": true
+    }
+  ]
+}
+```
+
+Manifest 对象字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `source` | string | GitHub 仓库 URL、GitHub API 仓库 URL、Gitee 仓库 URL、Gitee API 仓库 URL，或远程 zip URL。 |
+| `name` | string | 数组条目的可选 selector 名称。映射写法里，映射 key 就是依赖名。 |
+| `tag` | string | 安装指定 release tag；如果没有匹配 release，则安装对应的仓库 tag 归档。 |
+| `branch` | string | 安装指定仓库分支。 |
+| `prerelease` | boolean | 解析 latest release 时允许选择 prerelease。 |
+| `fullProject` | boolean | 跳过 include 探测，直接按完整项目安装。 |
+
+同一个依赖不能同时设置 `tag` 和 `branch`。
+
+## 直接安装
+
+如果只是临时安装一个来源，不想编辑 `cppkg.json`，可以使用 `get`。
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json
-cppkg-cli get https://github.com/fmtlib/fmt
-```
-
-通过空格分隔，一次安装多个包：
-
-```bash
 cppkg-cli get https://github.com/nlohmann/json https://github.com/fmtlib/fmt
 ```
 
-使用 GitHub API 仓库地址安装：
+支持的来源格式：
 
 ```bash
+cppkg-cli get https://github.com/nlohmann/json
 cppkg-cli get https://api.github.com/repos/nlohmann/json
-```
-
-使用 Gitee 仓库地址安装：
-
-```bash
 cppkg-cli get https://gitee.com/mirrors/jsoncpp.git
-```
-
-使用 Gitee API 仓库地址安装：
-
-```bash
 cppkg-cli get https://gitee.com/api/v5/repos/mirrors/jsoncpp
+cppkg-cli get https://example.com/downloads/my-sdk.zip
 ```
 
-安装一个没有 release 的完整仓库：
-
-```bash
-cppkg-cli get https://github.com/espruino/Espruino
-```
-
-安装指定 release tag 或仓库 tag：
+版本和安装模式选项：
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json --tag v3.12.0
-```
-
-安装指定分支：
-
-```bash
 cppkg-cli get https://github.com/lvgl/lvgl --branch master
-```
-
-解析最新 release 时允许 prerelease：
-
-```bash
 cppkg-cli get https://github.com/owner/repo --prerelease
-```
-
-强制按整仓模式安装：
-
-```bash
 cppkg-cli get https://github.com/lvgl/lvgl --full-project
 ```
 
-安装一个直接给出的远程 zip 压缩包：
-
-```bash
-cppkg-cli get https://example.com/downloads/my-sdk.zip
-```
+## 管理包
 
 查看已安装包：
 
@@ -102,29 +153,14 @@ cppkg-cli get https://example.com/downloads/my-sdk.zip
 cppkg-cli list
 ```
 
-更新单个包：
-
-```bash
-cppkg-cli update json
-```
-
-更新时强制按整仓模式重装：
-
-```bash
-cppkg-cli update lvgl --full-project
-```
-
-把一个已安装包更新到新的 tag 或分支：
-
-```bash
-cppkg-cli update json --tag v3.12.0
-cppkg-cli update lvgl --branch master
-```
-
-更新全部已安装包：
+更新全部包，或更新单个包：
 
 ```bash
 cppkg-cli update
+cppkg-cli update json
+cppkg-cli update json --tag v3.12.0
+cppkg-cli update lvgl --branch master
+cppkg-cli update lvgl --full-project
 ```
 
 删除一个包：
@@ -133,22 +169,20 @@ cppkg-cli update
 cppkg-cli remove json
 ```
 
-`remove` 和 `update` 支持的 selector：
+`install`、`update` 和 `remove` 支持的 selector：
 
-- 包名，比如 `json`
-- 仓库路径，比如 `/nlohmann/json`
-- `owner/repo`，比如 `nlohmann/json`
-- 记录在 `deps.json` 里的完整来源 URL，比如 `https://github.com/nlohmann/json`
+| Selector | 示例 |
+| --- | --- |
+| Manifest 依赖名或已安装包名 | `json` |
+| 仓库路径 | `/nlohmann/json` |
+| `owner/repo` | `nlohmann/json` |
+| 已记录的来源 URL | `https://github.com/nlohmann/json` |
 
-如果需要代理：
+`install` 的 selector 会匹配 `cppkg.json` 中的条目。`update` 和 `remove` 的 selector 会匹配 `deps.json` 中的已安装记录。
 
-```bash
-cppkg-cli get https://github.com/nlohmann/json \
-  --http-proxy http://127.0.0.1:7890 \
-  --https-proxy http://127.0.0.1:7890
-```
+## 配置
 
-给当前项目设置持久化默认值：
+项目级配置保存在 `./cppkg.config.json`。
 
 ```bash
 cppkg-cli config set proxy http://127.0.0.1:7890
@@ -159,14 +193,33 @@ cppkg-cli config get packageRootDir
 cppkg-cli config list
 ```
 
-`config` 命令会把项目级配置写入 `./cppkg.config.json`。如果同时传了 CLI 参数，则 CLI 参数优先。
+支持的配置项：
 
-### 输出结构
+| 配置项 | 默认值 | 说明 |
+| --- | --- | --- |
+| `proxy` | 空 | HTTP 和 HTTPS 请求的默认代理。 |
+| `httpProxy` | 空 | 默认 HTTP 代理。 |
+| `httpsProxy` | 空 | 默认 HTTPS 代理。 |
+| `packageRootDir` | `cpp_libs` | 安装数据根目录。 |
+| `includeDirName` | `include` | `packageRootDir` 下的共享 include 目录名。 |
+| `projectsDirName` | `projects` | `packageRootDir` 下的完整项目目录名。 |
+| `depsFileName` | `deps.json` | `packageRootDir` 下的已安装包元数据文件名。 |
 
-在默认配置下，执行成功后，包内容会被放到当前目录下的 `./cpp_libs`，安装元数据会写入 `./cpp_libs/deps.json`：
+CLI 代理参数优先于配置文件：
+
+```bash
+cppkg-cli get https://github.com/nlohmann/json \
+  --http-proxy http://127.0.0.1:7890 \
+  --https-proxy http://127.0.0.1:7890
+```
+
+## 输出结构
+
+默认输出结构：
 
 ```text
 your-project/
+├── cppkg.json
 └── cpp_libs/
     ├── deps.json
     ├── include/
@@ -179,30 +232,23 @@ your-project/
         └── mirrors_jsoncpp/
 ```
 
-处理规则：
+安装行为：
 
-- `cppkg-cli get` 支持通过空格分隔传入一个或多个来源地址。每个来源地址都可以是 GitHub 仓库 URL、GitHub API 仓库 URL、Gitee 仓库 URL、Gitee API 仓库 URL，或直接远程 zip 压缩包 URL。
-- 对于 GitHub 和 Gitee 仓库输入，CLI 会先通过对应平台的 API 检查仓库是否存在已发布的 release。
-- `cppkg-cli get --tag <tag>` 会优先安装匹配的 release tag；如果没有匹配 release，则会退回到这个 tag 对应的仓库源码归档。
-- `cppkg-cli get --branch <branch>` 会安装这个分支对应的仓库源码归档。
-- `cppkg-cli get --prerelease` 会在解析最新 release 时允许 prerelease。显式的 `--tag` 和 `--branch` 不能同时使用。
-- 如果存在 release，会先尝试按头文件包处理并安装到当前配置的 include 目录，默认是 `./cpp_libs/include`。
-- `cppkg-cli get --full-project` 会跳过 `include` 目录探测，直接按完整项目安装。
-- 在 release 模式下，如果 release 归档里没有可用的 `include` 目录，会继续尝试默认分支的仓库源码归档。
-- 如果 release 归档和仓库源码归档里都没有可用的 `include` 目录，就会回退成整仓安装到当前配置的 projects 目录，默认是 `./cpp_libs/projects/<owner>_<repo>`。
-- 如果仓库不存在 release，就会下载默认分支的仓库源码归档，并解压到当前配置的 projects 目录，默认是 `./cpp_libs/projects/<owner>_<repo>`。
-- 对于直接远程 zip 压缩包 URL，因为没有 releases API 可用，所以会按完整项目安装到 `./cpp_libs/projects`。
+- GitHub 和 Gitee 仓库会先通过对应 API 检查已发布 release。
+- 如果 release 归档里有可用的 `include` 目录，头文件会合并到当前配置的 include 目录。
+- 如果 release 归档没有可用的 `include` 目录，会继续尝试仓库源码归档。
+- 如果仍然没有可用 include 目录，会回退为完整项目安装到当前配置的 projects 目录。
+- 没有 release 的仓库和直接远程 zip URL 会按完整项目安装。
 - 直接 archive URL 会安装到一个由来源 URL 生成的清洗后目录名里。
-- 会把 `include/xxx` 下的内容直接归并到当前配置的 include 目录。
-- 已安装包的信息会记录到当前配置的依赖元数据文件里，默认是 `./cpp_libs/deps.json`，包括版本、安装时间、仓库 URL、归档 URL、用户请求的来源选择，以及用于删除的顶层目录或文件路径，不会把每个文件都展开记录进去。
-- `cppkg-cli remove` 会根据记录的元数据删除当前包的文件，并尽量保留仍被其他包引用的共享路径。
-- `cppkg-cli update` 会先清理当前包的已记录文件，再按记录下来的来源 URL 重新安装指定包或全部包，默认会沿用上次记录的安装模式以及已记录的 tag 或 branch 选择。
-- 如果 release 没有单独的 zip 资源，会退回到平台提供的源码归档，比如 GitHub 的 `zipball`。
+- 元数据会记录包版本、安装时间、仓库 URL、归档 URL、用户请求的来源选择、安装模式和用于删除的顶层路径。
+- `remove` 会删除已记录路径，并保留仍被其他包引用的共享路径。
+- `update` 会先清理已记录路径，再按记录来源重新安装。除非传入新的选项，否则会沿用上次记录的安装模式和 tag 或 branch。
+- 如果 release 没有单独 zip 资源，会退回到平台源码归档，比如 GitHub 的 `zipball`。
 
-### 开发
+## 开发
 
 ```bash
 npm install
 npm run build
-node dist/main.js --help
+npm test
 ```

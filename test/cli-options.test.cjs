@@ -46,6 +46,17 @@ test("update help exposes version selection options", async () => {
   });
 });
 
+test("install help exposes manifest install options", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["install", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Install dependencies declared in cppkg\.json/);
+    assert.match(result.stdout, /--http-proxy <url>/);
+    assert.match(result.stdout, /--https-proxy <url>/);
+  });
+});
+
 test("get rejects using tag and branch together before network access", async () => {
   await withTempDir(async (cwd) => {
     const result = runCli(

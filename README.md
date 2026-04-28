@@ -1,10 +1,10 @@
 # cppkg-cli
 
-A CLI for downloading C/C++ packages from GitHub, Gitee, or remote zip archives. By default, repository sources with published releases are installed into `./cpp_libs/include` when their archives expose a usable `include` directory; otherwise they fall back to full-project installs under `./cpp_libs/projects`. Repository sources without releases, along with direct remote zip archive URLs, are treated as full projects and extracted into `./cpp_libs/projects`. These paths and the default proxy can now be changed with `cppkg-cli config`.
+`cppkg-cli` downloads C/C++ packages from GitHub, Gitee, or remote zip archives into a project-local package directory. It can install reusable headers into a shared include tree, or fall back to full-project extraction when a package is not header-only.
 
 [简体中文](./docs/README.zh-CN.md)
 
-### Install
+## Install
 
 ```bash
 npm install -g cppkg-cli
@@ -14,87 +14,138 @@ For local development inside this repository:
 
 ```bash
 npm install
-npm run dev -- get https://github.com/nlohmann/json
+npm run dev -- --help
 ```
 
-### Usage
+## Quick Start
+
+Create a project manifest:
 
 ```bash
-cppkg-cli get <source-url...>
-cppkg-cli list
-cppkg-cli remove <selector>
-cppkg-cli update [selector]
-cppkg-cli config <get|set|list|remove>
+cppkg-cli init
 ```
 
-Examples:
+Add dependencies to `cppkg.json`:
 
-Install a package:
+```json
+{
+  "dependencies": {
+    "json": "https://github.com/nlohmann/json",
+    "fmt": {
+      "source": "https://github.com/fmtlib/fmt",
+      "tag": "11.2.0"
+    },
+    "lvgl": {
+      "source": "https://github.com/lvgl/lvgl",
+      "branch": "master",
+      "fullProject": true
+    }
+  }
+}
+```
+
+Install everything in the manifest:
+
+```bash
+cppkg-cli install
+```
+
+Install only selected manifest entries:
+
+```bash
+cppkg-cli install json fmt
+```
+
+With the default config, installed files are written under `./cpp_libs`, and package metadata is written to `./cpp_libs/deps.json`.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `cppkg-cli init` | Create `./cppkg.json`. |
+| `cppkg-cli install [selector...]` | Install all manifest dependencies, or selected manifest entries. |
+| `cppkg-cli get <source-url...>` | Install one or more package sources directly. |
+| `cppkg-cli list` | List packages tracked in `deps.json`. |
+| `cppkg-cli update [selector]` | Update one tracked package, or all packages when no selector is provided. |
+| `cppkg-cli remove <selector>` | Remove one tracked package. |
+| `cppkg-cli config <subcommand>` | Manage project-level defaults in `./cppkg.config.json`. |
+
+Run any command with `--help` for its current options.
+
+## Manifest
+
+`cppkg.json` supports a name-to-source map:
+
+```json
+{
+  "dependencies": {
+    "json": "https://github.com/nlohmann/json",
+    "fmt": {
+      "source": "https://github.com/fmtlib/fmt",
+      "tag": "11.2.0"
+    }
+  }
+}
+```
+
+It also supports an array form:
+
+```json
+{
+  "dependencies": [
+    "https://github.com/nlohmann/json",
+    {
+      "name": "lvgl",
+      "source": "https://github.com/lvgl/lvgl",
+      "branch": "master",
+      "fullProject": true
+    }
+  ]
+}
+```
+
+Manifest object fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `source` | string | GitHub repo URL, GitHub API repo URL, Gitee repo URL, Gitee API repo URL, or remote zip URL. |
+| `name` | string | Optional selector name for array entries. In map form, the map key is the dependency name. |
+| `tag` | string | Install a specific release tag, or repository tag when no matching release exists. |
+| `branch` | string | Install a specific repository branch. |
+| `prerelease` | boolean | Allow prerelease entries when resolving the latest release. |
+| `fullProject` | boolean | Skip include detection and install as a full project. |
+
+`tag` and `branch` cannot be used together for the same dependency.
+
+## Direct Install
+
+Use `get` when you want to install a source without editing `cppkg.json`.
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json
-cppkg-cli get https://github.com/fmtlib/fmt
-```
-
-Install multiple packages in one command by separating sources with spaces:
-
-```bash
 cppkg-cli get https://github.com/nlohmann/json https://github.com/fmtlib/fmt
 ```
 
-Install using a GitHub API repository URL:
+Supported source formats:
 
 ```bash
+cppkg-cli get https://github.com/nlohmann/json
 cppkg-cli get https://api.github.com/repos/nlohmann/json
-```
-
-Install using a Gitee repository URL:
-
-```bash
 cppkg-cli get https://gitee.com/mirrors/jsoncpp.git
-```
-
-Install using a Gitee API repository URL:
-
-```bash
 cppkg-cli get https://gitee.com/api/v5/repos/mirrors/jsoncpp
+cppkg-cli get https://example.com/downloads/my-sdk.zip
 ```
 
-Install a repository without releases as a full project:
-
-```bash
-cppkg-cli get https://github.com/espruino/Espruino
-```
-
-Install a specific release tag or repository tag:
+Version and install-mode options:
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json --tag v3.12.0
-```
-
-Install a specific branch:
-
-```bash
 cppkg-cli get https://github.com/lvgl/lvgl --branch master
-```
-
-Allow prereleases when resolving the latest release:
-
-```bash
 cppkg-cli get https://github.com/owner/repo --prerelease
-```
-
-Force a repository to install as a full project:
-
-```bash
 cppkg-cli get https://github.com/lvgl/lvgl --full-project
 ```
 
-Install a direct remote zip archive as a full project:
-
-```bash
-cppkg-cli get https://example.com/downloads/my-sdk.zip
-```
+## Manage Packages
 
 List installed packages:
 
@@ -102,53 +153,36 @@ List installed packages:
 cppkg-cli list
 ```
 
-Update one installed package:
-
-```bash
-cppkg-cli update json
-```
-
-Force a full-project reinstall while updating:
-
-```bash
-cppkg-cli update lvgl --full-project
-```
-
-Update one installed package from a new tag or branch:
-
-```bash
-cppkg-cli update json --tag v3.12.0
-cppkg-cli update lvgl --branch master
-```
-
-Update all installed packages:
+Update all packages, or one package:
 
 ```bash
 cppkg-cli update
+cppkg-cli update json
+cppkg-cli update json --tag v3.12.0
+cppkg-cli update lvgl --branch master
+cppkg-cli update lvgl --full-project
 ```
 
-Remove one installed package:
+Remove one package:
 
 ```bash
 cppkg-cli remove json
 ```
 
-Selectors accepted by `remove` and `update`:
+Selectors accepted by `install`, `update`, and `remove`:
 
-- Installed package name, such as `json`
-- Repository path, such as `/nlohmann/json`
-- Owner and repository, such as `nlohmann/json`
-- Exact recorded source URL, such as `https://github.com/nlohmann/json`
+| Selector | Example |
+| --- | --- |
+| Manifest dependency name or installed package name | `json` |
+| Repository path | `/nlohmann/json` |
+| Owner/repository | `nlohmann/json` |
+| Recorded source URL | `https://github.com/nlohmann/json` |
 
-With a proxy:
+`install` selectors are matched against entries in `cppkg.json`. `update` and `remove` selectors are matched against installed records in `deps.json`.
 
-```bash
-cppkg-cli get https://github.com/nlohmann/json \
-  --http-proxy http://127.0.0.1:7890 \
-  --https-proxy http://127.0.0.1:7890
-```
+## Config
 
-Configure persistent defaults for the current project:
+Project-level config is stored in `./cppkg.config.json`.
 
 ```bash
 cppkg-cli config set proxy http://127.0.0.1:7890
@@ -159,14 +193,33 @@ cppkg-cli config get packageRootDir
 cppkg-cli config list
 ```
 
-The `config` command stores project-level settings in `./cppkg.config.json`. CLI flags still win over config values.
+Supported config keys:
 
-### Output Layout
+| Key | Default | Description |
+| --- | --- | --- |
+| `proxy` | empty | Default proxy for HTTP and HTTPS requests. |
+| `httpProxy` | empty | Default HTTP proxy. |
+| `httpsProxy` | empty | Default HTTPS proxy. |
+| `packageRootDir` | `cpp_libs` | Root directory for installed package data. |
+| `includeDirName` | `include` | Shared include directory under `packageRootDir`. |
+| `projectsDirName` | `projects` | Full-project directory under `packageRootDir`. |
+| `depsFileName` | `deps.json` | Installed package metadata file under `packageRootDir`. |
 
-With the default config, package files are placed under `./cpp_libs`, and metadata is written to `./cpp_libs/deps.json`:
+CLI proxy flags override config values:
+
+```bash
+cppkg-cli get https://github.com/nlohmann/json \
+  --http-proxy http://127.0.0.1:7890 \
+  --https-proxy http://127.0.0.1:7890
+```
+
+## Output Layout
+
+Default layout:
 
 ```text
 your-project/
+├── cppkg.json
 └── cpp_libs/
     ├── deps.json
     ├── include/
@@ -179,29 +232,23 @@ your-project/
         └── mirrors_jsoncpp/
 ```
 
-Behavior:
+Install behavior:
 
-- `cppkg-cli get` accepts one or more sources separated by spaces. Each source can be a GitHub repository URL, GitHub API repository URL, Gitee repository URL, Gitee API repository URL, or direct remote zip archive URL.
-- GitHub and Gitee repository inputs are checked for a published release through the corresponding provider API.
-- `cppkg-cli get --tag <tag>` installs from a specific release tag when a matching release exists, and otherwise falls back to the repository archive for that tag.
-- `cppkg-cli get --branch <branch>` installs from the repository archive for that branch.
-- `cppkg-cli get --prerelease` allows prerelease entries when resolving the latest release. Explicit `--tag` and `--branch` cannot be used together.
-- If a release exists, the CLI first tries to install reusable headers into the configured include directory, which defaults to `./cpp_libs/include`.
-- `cppkg-cli get --full-project` skips include-directory detection and installs the repository as a full project directly.
-- In release mode, the CLI first tries the release archive and then retries with the repository archive when the release archive does not contain a usable `include` directory.
-- If neither archive contains a usable `include` directory, the CLI falls back to installing the repository as a full project under the configured projects directory, which defaults to `./cpp_libs/projects/<owner>_<repo>`.
-- If no release exists, the CLI downloads the default-branch repository archive and extracts it into the configured projects directory, which defaults to `./cpp_libs/projects/<owner>_<repo>`.
-- Direct remote zip archive URLs are installed as full projects because there is no releases API to classify them as reusable header packages.
+- Repository sources are checked for published releases through the GitHub or Gitee API.
+- If a release archive exposes a usable `include` directory, headers are merged into the configured include directory.
+- If the release archive does not expose a usable `include` directory, the CLI retries with the repository archive.
+- If no usable include directory is found, the package is installed as a full project under the configured projects directory.
+- Repositories without releases and direct remote zip URLs are installed as full projects.
 - Direct archive URLs are installed into a sanitized directory name derived from the source URL.
-- Package content under `include/xxx` is merged directly into the configured include directory.
-- Installed package metadata is recorded in the configured deps file, which defaults to `./cpp_libs/deps.json`, including version, install time, repository URL, archive URL, requested source selection, and only the top-level installed directories or files tracked for removal.
-- `cppkg-cli remove` deletes installed files based on the tracked metadata and keeps shared paths that are still referenced by other packages.
-- `cppkg-cli update` refreshes one package or all packages by cleaning tracked files first and then reinstalling from the recorded source URL, while reusing the recorded install mode and recorded tag or branch selection by default.
-- When a release does not provide a separate zip asset, the CLI falls back to the provider source archive, such as a GitHub `zipball`.
+- Metadata records the package version, install time, repository URL, archive URL, requested source selection, install mode, and tracked top-level paths.
+- `remove` deletes tracked paths while preserving paths still referenced by other installed packages.
+- `update` cleans tracked paths first, then reinstalls from the recorded source URL. It reuses the recorded install mode and recorded tag or branch unless new options are provided.
+- If a release does not provide a separate zip asset, the CLI falls back to the provider source archive, such as a GitHub `zipball`.
 
-### Development
+## Development
 
 ```bash
 npm install
-npm run dev -- --help
+npm run build
+npm test
 ```
