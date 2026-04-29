@@ -27,7 +27,7 @@ async function queueDependencyMetadataUpdate<T>(operation: () => Promise<T>) {
 }
 
 /**
- * Keeps dependency records stable by sorting them by name and repository path.
+ * Keeps dependency records stable by sorting them by name and repository identity.
  */
 function sortDependencies(dependencies: InstalledDependency[]) {
   return [...dependencies].sort((left, right) => {
@@ -37,8 +37,18 @@ function sortDependencies(dependencies: InstalledDependency[]) {
       return byName;
     }
 
-    return left.repository.path.localeCompare(right.repository.path);
+    return (
+      left.repository.path.localeCompare(right.repository.path) ||
+      getDependencyIdentity(left).localeCompare(getDependencyIdentity(right))
+    );
   });
+}
+
+function getDependencyIdentity(dependency: InstalledDependency) {
+  return (
+    dependency.repository.url.trim().replace(/\/+$/, "").replace(/\.git$/i, "") ||
+    dependency.repository.path
+  );
 }
 
 /**
@@ -169,7 +179,7 @@ export async function upsertInstalledDependency(
   return queueDependencyMetadataUpdate(async () => {
     const installed = await readInstalledDependencies();
     const dependencies = installed.dependencies.filter(
-      (item) => item.repository.path !== dependency.repository.path,
+      (item) => getDependencyIdentity(item) !== getDependencyIdentity(dependency),
     );
 
     dependencies.push(normalizeInstalledDependency(dependency));

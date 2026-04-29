@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import fs from "node:fs";
+import path from "node:path";
 import { registerConfigCommand } from "./commands/config";
 import { registerGetCommand } from "./commands/get";
 import { registerInitCommand } from "./commands/init";
@@ -9,6 +11,17 @@ import { registerListCommand } from "./commands/list";
 import { registerRemoveCommand } from "./commands/remove";
 import { registerUpdateCommand } from "./commands/update";
 import { logger } from "./tools/logger";
+
+function getPackageVersion() {
+  const packageJsonPath = path.resolve(__dirname, "../package.json");
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8")) as {
+    version?: unknown;
+  };
+
+  return typeof packageJson.version === "string" && packageJson.version.trim()
+    ? packageJson.version
+    : "0.0.0";
+}
 
 /**
  * Bootstraps the CLI and registers all supported commands.
@@ -21,7 +34,7 @@ async function main() {
     .description(
       "Download C/C++ packages into a shared include directory or project workspace",
     )
-    .version("0.1.1");
+    .version(getPackageVersion());
 
   registerGetCommand(program);
   registerInitCommand(program);

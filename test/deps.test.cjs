@@ -142,7 +142,7 @@ test("writeInstalledDependencies sorts dependencies and top-level paths", async 
   });
 });
 
-test("upsertInstalledDependency replaces records by repository path", async () => {
+test("upsertInstalledDependency replaces records by repository identity", async () => {
   await withTempCwd(async () => {
     await upsertInstalledDependency(createDependency("json", "/nlohmann/json"));
     await upsertInstalledDependency(
@@ -156,5 +156,25 @@ test("upsertInstalledDependency replaces records by repository path", async () =
 
     assert.equal(installed.dependencies.length, 1);
     assert.deepEqual(installed.dependencies[0].install.paths, ["single_include"]);
+  });
+});
+
+test("upsertInstalledDependency keeps providers separate when repository paths overlap", async () => {
+  await withTempCwd(async () => {
+    const giteeDependency = createDependency("gitee-repo", "/owner/repo", {
+      paths: ["gitee_repo"],
+    });
+
+    giteeDependency.repository.url = "https://gitee.com/owner/repo.git";
+
+    await upsertInstalledDependency(createDependency("github-repo", "/owner/repo"));
+    await upsertInstalledDependency(giteeDependency);
+
+    const installed = await readInstalledDependencies();
+
+    assert.deepEqual(
+      installed.dependencies.map((dependency) => dependency.name),
+      ["gitee-repo", "github-repo"],
+    );
   });
 });

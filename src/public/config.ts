@@ -10,6 +10,7 @@ export const CONFIG_KEYS = [
   "packageRootDir",
   "includeDirName",
   "projectsDirName",
+  "cacheDirName",
   "depsFileName",
 ] as const;
 
@@ -32,6 +33,7 @@ const DEFAULT_CLI_CONFIG: CliConfig = {
   packageRootDir: "cpp_libs",
   includeDirName: "include",
   projectsDirName: "projects",
+  cacheDirName: "cache",
   depsFileName: "deps.json",
 };
 
@@ -39,6 +41,7 @@ const RELATIVE_PATH_KEYS = new Set<ConfigKey>([
   "packageRootDir",
   "includeDirName",
   "projectsDirName",
+  "cacheDirName",
   "depsFileName",
 ]);
 

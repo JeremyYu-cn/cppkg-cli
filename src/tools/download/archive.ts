@@ -1,15 +1,60 @@
 import type { GetPkgOptions } from "../../types/global";
 import type { ArchiveDescriptor, PreparedArchive } from "./types";
 import axios from "axios";
+import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import unzipper from "unzipper";
+import { getArchiveCachePath } from "../../public/packagePath";
 import { logger } from "../logger";
 import { getRequestProxy } from "../request";
 import { collectIncludeDirs } from "./include";
+
+type ArchiveFileResult = {
+  cachePath?: string;
+  fromCache: boolean;
+};
+
+function isArchiveCacheEnabled(options: GetPkgOptions) {
+  return options.cache !== false;
+}
+
+function getCacheFileName(archive: ArchiveDescriptor) {
+  const hash = crypto.createHash("sha256").update(archive.url).digest("hex")
+    .slice(0, 16);
+  const safeLabel = archive.label
+    .replace(/[^A-Za-z0-9._-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 120) || "archive.zip";
+  const normalizedLabel = safeLabel.endsWith(".zip")
+    ? safeLabel
+    : `${safeLabel}.zip`;
+
+  return `${hash}-${normalizedLabel}`;
+}
+
+function getCacheFilePath(archive: ArchiveDescriptor) {
+  return path.join(getArchiveCachePath(), getCacheFileName(archive));
+}
+
+async function hasUsableCacheFile(cachePath: string) {
+  try {
+    const stat = await fsp.stat(cachePath);
+
+    return stat.isFile() && stat.size > 0;
+  } catch (error: unknown) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
+}
 
 /**
  * Downloads an archive with curl as a compatibility fallback for hosts that serve HTML to axios.
@@ -93,6 +138,35 @@ async function downloadArchive(
   await pipeline(res.data, fs.createWriteStream(archivePath));
 }
 
+async function prepareArchiveFile(
+  archive: ArchiveDescriptor,
+  archivePath: string,
+  options: GetPkgOptions,
+  forceRefresh = false,
+): Promise<ArchiveFileResult> {
+  if (!isArchiveCacheEnabled(options)) {
+    await downloadArchive(archive.url, archivePath, options);
+    return { fromCache: false };
+  }
+
+  const cachePath = getCacheFilePath(archive);
+
+  if (!forceRefresh && await hasUsableCacheFile(cachePath)) {
+    logger.info(
+      `Using cached archive ${path.relative(process.cwd(), cachePath)}`,
+    );
+    await fsp.copyFile(cachePath, archivePath);
+    return { cachePath, fromCache: true };
+  }
+
+  await downloadArchive(archive.url, archivePath, options);
+  await fsp.mkdir(path.dirname(cachePath), { recursive: true });
+  await fsp.copyFile(archivePath, cachePath);
+  logger.detail("Cached archive", path.relative(process.cwd(), cachePath));
+
+  return { cachePath, fromCache: false };
+}
+
 /**
  * Extracts a zip archive into a temporary working directory.
  */
@@ -141,10 +215,26 @@ export async function prepareArchive(
         : `Trying archive URL ${archive.label}`,
   );
 
-  await downloadArchive(archive.url, archivePath, options);
-  logger.progress("Download complete, extracting archive");
+  let archiveFile = await prepareArchiveFile(archive, archivePath, options);
+  logger.progress("Archive ready, extracting archive");
 
-  await extractZipArchive(archivePath, extractPath);
+  try {
+    await extractZipArchive(archivePath, extractPath);
+  } catch (error) {
+    if (!archiveFile.fromCache || !archiveFile.cachePath) {
+      throw error;
+    }
+
+    logger.warn(
+      `Cached archive ${path.relative(process.cwd(), archiveFile.cachePath)} could not be extracted, refreshing it`,
+    );
+    await fsp.rm(archiveFile.cachePath, { force: true });
+    await fsp.rm(archivePath, { force: true });
+    await fsp.rm(extractPath, { force: true, recursive: true });
+    archiveFile = await prepareArchiveFile(archive, archivePath, options, true);
+    await extractZipArchive(archivePath, extractPath);
+  }
+
   const sourceRootPath = await getPrimaryExtractedRoot(extractPath);
 
   return {

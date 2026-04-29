@@ -9,6 +9,7 @@ import {
   writeInstalledDependencies,
 } from "./deps";
 import { getVCPkg } from "./download/main";
+import { resolveInputSource } from "./download/sources";
 import { logger } from "./logger";
 
 type RemoveFilesResult = {
@@ -31,19 +32,155 @@ function compareByDepthDescending(left: string, right: string) {
   return getPathDepth(right) - getPathDepth(left) || left.localeCompare(right);
 }
 
+function getDependencyIdentity(dependency: InstalledDependency) {
+  return (
+    dependency.repository.url.trim().replace(/\/+$/, "").replace(/\.git$/i, "") ||
+    dependency.repository.path
+  );
+}
+
+function addSelectorVariant(variants: Set<string>, value: string | undefined) {
+  const normalized = value?.trim().replace(/\/+$/, "");
+
+  if (!normalized) {
+    return;
+  }
+
+  variants.add(normalized);
+  variants.add(normalized.replace(/\.git$/i, ""));
+}
+
+function getRepositoryProvider(value: string) {
+  try {
+    const parsed = new URL(value);
+
+    if (["github.com", "www.github.com", "api.github.com"].includes(parsed.hostname)) {
+      return "github" as const;
+    }
+
+    if (["gitee.com", "www.gitee.com"].includes(parsed.hostname)) {
+      return "gitee" as const;
+    }
+  } catch {
+    // Plain owner/repo selectors are provider-neutral.
+  }
+
+  return null;
+}
+
+function addRepositoryPathVariants(
+  variants: Set<string>,
+  repositoryPath: string,
+  providers: Array<"github" | "gitee"> = [],
+  includeBarePath = true,
+) {
+  const normalizedPath = repositoryPath.trim().replace(/^\/+|\/+$/g, "")
+    .replace(/\.git$/i, "");
+
+  if (!normalizedPath) {
+    return;
+  }
+
+  if (includeBarePath) {
+    addSelectorVariant(variants, normalizedPath);
+    addSelectorVariant(variants, `/${normalizedPath}`);
+  }
+
+  if (providers.includes("github")) {
+    addSelectorVariant(variants, `github.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://github.com/${normalizedPath}`);
+  }
+
+  if (providers.includes("gitee")) {
+    addSelectorVariant(variants, `gitee.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://gitee.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://gitee.com/${normalizedPath}.git`);
+  }
+}
+
+function resolveURLLikeSelector(value: string) {
+  try {
+    return resolveInputSource(value);
+  } catch {
+    if (/^(?:www\.)?(?:github|gitee)\.com\//i.test(value)) {
+      try {
+        return resolveInputSource(`https://${value}`);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+}
+
+function addURLVariants(variants: Set<string>, value: string) {
+  const source = resolveURLLikeSelector(value);
+
+  if (!source) {
+    return;
+  }
+
+  addSelectorVariant(variants, source.repositoryUrl);
+
+  if (source.kind === "github-repository") {
+    addRepositoryPathVariants(variants, source.repositoryPath, ["github"], false);
+  } else if (source.kind === "gitee-repository") {
+    addRepositoryPathVariants(variants, source.repositoryPath, ["gitee"], false);
+  }
+}
+
 /**
  * Expands a package selector into the supported lookup forms.
  */
 function getSelectorVariants(selector: string) {
+  const variants = new Set<string>();
   const normalizedSelector = selector.trim().replace(/\/+$/, "");
+  const resolvedSource = resolveURLLikeSelector(normalizedSelector);
 
-  return [
-    normalizedSelector,
-    normalizedSelector.replace(/^https:\/\/github\.com/i, ""),
-    normalizedSelector.replace(/^github\.com\//i, ""),
-  ]
-    .map((value) => value.trim())
-    .filter(Boolean);
+  addSelectorVariant(variants, normalizedSelector);
+
+  if (resolvedSource) {
+    addURLVariants(variants, normalizedSelector);
+    return [...variants];
+  }
+
+  addRepositoryPathVariants(
+    variants,
+    normalizedSelector
+      .replace(/^https?:\/\/(?:www\.)?github\.com\//i, "")
+      .replace(/^github\.com\//i, "")
+      .replace(/^https?:\/\/(?:www\.)?gitee\.com\//i, "")
+      .replace(/^gitee\.com\//i, "")
+      .replace(/^https?:\/\/api\.github\.com\/repos\//i, "")
+      .replace(/^https?:\/\/gitee\.com\/api\/v5\/repos\//i, ""),
+  );
+
+  return [...variants];
+}
+
+function getDependencyRepositoryVariants(dependency: InstalledDependency) {
+  const variants = new Set<string>();
+  const provider = getRepositoryProvider(dependency.repository.url);
+
+  addSelectorVariant(variants, dependency.repository.path);
+  addSelectorVariant(variants, dependency.repository.url);
+  addURLVariants(variants, dependency.repository.url);
+  addRepositoryPathVariants(
+    variants,
+    dependency.repository.path,
+    provider ? [provider] : [],
+  );
+
+  return variants;
+}
+
+function getDependencySelectorVariants(dependency: InstalledDependency) {
+  const variants = getDependencyRepositoryVariants(dependency);
+
+  addSelectorVariant(variants, dependency.name);
+
+  return variants;
 }
 
 /**
@@ -54,15 +191,9 @@ function matchesDependencySelector(
   selector: string,
 ) {
   const variants = getSelectorVariants(selector);
+  const dependencyVariants = getDependencySelectorVariants(dependency);
 
-  return variants.some((variant) => {
-    return (
-      dependency.repository.path === variant ||
-      dependency.repository.path.slice(1) === variant ||
-      dependency.repository.url.replace(/\/+$/, "") === variant ||
-      dependency.name === variant
-    );
-  });
+  return variants.some((variant) => dependencyVariants.has(variant));
 }
 
 /**
@@ -82,13 +213,9 @@ function resolveInstalledDependency(
 
   const exactRepositoryMatch = matches.find((dependency) => {
     const variants = getSelectorVariants(selector);
+    const repositoryVariants = getDependencyRepositoryVariants(dependency);
 
-    return variants.some(
-      (variant) =>
-        dependency.repository.path === variant ||
-        dependency.repository.path.slice(1) === variant ||
-        dependency.repository.url.replace(/\/+$/, "") === variant,
-    );
+    return variants.some((variant) => repositoryVariants.has(variant));
   });
 
   if (exactRepositoryMatch) {
@@ -335,7 +462,7 @@ export async function removeInstalledPackage(selector: string) {
     selector,
   );
   const remainingDependencies = installed.dependencies.filter(
-    (item) => item.repository.path !== dependency.repository.path,
+    (item) => getDependencyIdentity(item) !== getDependencyIdentity(dependency),
   );
   const removeResult = await removeDependencyFiles(
     dependency,
@@ -370,23 +497,23 @@ export async function updateInstalledPackages(
     };
   }
 
-  const targetRepositoryPaths = selector
+  const targetSelectors = selector
     ? [
         resolveInstalledDependency(installed.dependencies, selector).repository
-          .path,
+          .url,
       ]
-    : installed.dependencies.map((dependency) => dependency.repository.path);
+    : installed.dependencies.map((dependency) => dependency.repository.url);
 
   const updatedDependencies: InstalledDependency[] = [];
 
-  for (const repositoryPath of targetRepositoryPaths) {
+  for (const targetSelector of targetSelectors) {
     const current = await readInstalledDependencies();
     const dependency = resolveInstalledDependency(
       current.dependencies,
-      repositoryPath,
+      targetSelector,
     );
     const otherDependencies = current.dependencies.filter(
-      (item) => item.repository.path !== dependency.repository.path,
+      (item) => getDependencyIdentity(item) !== getDependencyIdentity(dependency),
     );
     const removeResult = await removeDependencyFiles(
       dependency,

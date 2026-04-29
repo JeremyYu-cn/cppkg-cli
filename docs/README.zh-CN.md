@@ -143,6 +143,7 @@ cppkg-cli get https://github.com/nlohmann/json --tag v3.12.0
 cppkg-cli get https://github.com/lvgl/lvgl --branch master
 cppkg-cli get https://github.com/owner/repo --prerelease
 cppkg-cli get https://github.com/lvgl/lvgl --full-project
+cppkg-cli get https://github.com/nlohmann/json --no-cache
 ```
 
 ## 管理包
@@ -176,6 +177,7 @@ cppkg-cli remove json
 | Manifest 依赖名或已安装包名 | `json` |
 | 仓库路径 | `/nlohmann/json` |
 | `owner/repo` | `nlohmann/json` |
+| 平台 host 简写 | `github.com/nlohmann/json`、`gitee.com/mirrors/jsoncpp` |
 | 已记录的来源 URL | `https://github.com/nlohmann/json` |
 
 `install` 的 selector 会匹配 `cppkg.json` 中的条目。`update` 和 `remove` 的 selector 会匹配 `deps.json` 中的已安装记录。
@@ -189,8 +191,10 @@ cppkg-cli config set proxy http://127.0.0.1:7890
 cppkg-cli config set packageRootDir third_party/cppkg
 cppkg-cli config set includeDirName include
 cppkg-cli config set projectsDirName projects
+cppkg-cli config set cacheDirName cache
 cppkg-cli config get packageRootDir
 cppkg-cli config list
+cppkg-cli config remove proxy
 ```
 
 支持的配置项：
@@ -203,9 +207,10 @@ cppkg-cli config list
 | `packageRootDir` | `cpp_libs` | 安装数据根目录。 |
 | `includeDirName` | `include` | `packageRootDir` 下的共享 include 目录名。 |
 | `projectsDirName` | `projects` | `packageRootDir` 下的完整项目目录名。 |
+| `cacheDirName` | `cache` | `packageRootDir` 下的下载归档缓存目录名。 |
 | `depsFileName` | `deps.json` | `packageRootDir` 下的已安装包元数据文件名。 |
 
-CLI 代理参数优先于配置文件：
+CLI 代理参数优先于配置文件。需要绕过缓存并重新下载时，可以给 `get`、`install` 或 `update` 加 `--no-cache`。
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json \
@@ -222,6 +227,7 @@ your-project/
 ├── cppkg.json
 └── cpp_libs/
     ├── deps.json
+    ├── cache/
     ├── include/
     │   ├── nlohmann/
     │   │   └── json.hpp
@@ -235,6 +241,7 @@ your-project/
 安装行为：
 
 - GitHub 和 Gitee 仓库会先通过对应 API 检查已发布 release。
+- 下载到的归档会缓存在配置的缓存目录里；后续相同 archive URL 会复用缓存。
 - 如果 release 归档里有可用的 `include` 目录，头文件会合并到当前配置的 include 目录。
 - 如果 release 归档没有可用的 `include` 目录，会继续尝试仓库源码归档。
 - 如果仍然没有可用 include 目录，会回退为完整项目安装到当前配置的 projects 目录。

@@ -4,6 +4,7 @@ const { spawnSync } = require("node:child_process");
 const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
+const packageJson = require("../package.json");
 
 const cliPath = path.resolve(__dirname, "../dist/main.js");
 
@@ -24,6 +25,15 @@ function runCli(args, cwd) {
   });
 }
 
+test("root version flag follows package.json", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["--version"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout.trim(), packageJson.version);
+  });
+});
+
 test("get help exposes version selection options", async () => {
   await withTempDir(async (cwd) => {
     const result = runCli(["get", "--help"], cwd);
@@ -32,6 +42,7 @@ test("get help exposes version selection options", async () => {
     assert.match(result.stdout, /--tag <tag>/);
     assert.match(result.stdout, /--branch <branch>/);
     assert.match(result.stdout, /--prerelease/);
+    assert.match(result.stdout, /--no-cache/);
   });
 });
 
@@ -43,6 +54,7 @@ test("update help exposes version selection options", async () => {
     assert.match(result.stdout, /--tag <tag>/);
     assert.match(result.stdout, /--branch <branch>/);
     assert.match(result.stdout, /--prerelease/);
+    assert.match(result.stdout, /--no-cache/);
   });
 });
 
@@ -54,6 +66,7 @@ test("install help exposes manifest install options", async () => {
     assert.match(result.stdout, /Install dependencies declared in cppkg\.json/);
     assert.match(result.stdout, /--http-proxy <url>/);
     assert.match(result.stdout, /--https-proxy <url>/);
+    assert.match(result.stdout, /--no-cache/);
   });
 });
 

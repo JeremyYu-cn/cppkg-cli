@@ -183,12 +183,14 @@ test("getManifestDependencyOptions combines manifest options with CLI proxies", 
       tag: "v1",
     },
     {
+      cache: false,
       httpProxy: "http://127.0.0.1:7890",
       httpsProxy: "http://127.0.0.1:7890",
     },
   );
 
   assert.deepEqual(options, {
+    cache: false,
     fullProject: true,
     httpProxy: "http://127.0.0.1:7890",
     httpsProxy: "http://127.0.0.1:7890",
@@ -228,6 +230,94 @@ test("install rejects unknown manifest selectors before network access", async (
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Cannot find manifest dependency: fmt/);
+  });
+});
+
+test("install accepts provider host selector variants before network access", async () => {
+  const cases = [
+    {
+      selector: "github.com/fmtlib/fmt",
+      source: "https://github.com/fmtlib/fmt.git",
+    },
+    {
+      selector: "https://github.com/fmtlib/fmt.git",
+      source: "https://github.com/fmtlib/fmt",
+    },
+    {
+      selector: "gitee.com/mirrors/jsoncpp",
+      source: "https://gitee.com/mirrors/jsoncpp.git",
+    },
+    {
+      selector: "https://gitee.com/mirrors/jsoncpp",
+      source: "https://gitee.com/mirrors/jsoncpp.git",
+    },
+    {
+      selector: "https://api.github.com/repos/fmtlib/fmt",
+      source: "https://github.com/fmtlib/fmt",
+    },
+  ];
+
+  for (const item of cases) {
+    await withTempDir(async (cwd) => {
+      await fs.writeFile(
+        path.join(cwd, "cppkg.json"),
+        `${JSON.stringify(
+          {
+            dependencies: {
+              package: item.source,
+            },
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+
+      const result = runCli(["install", item.selector, "missing"], cwd);
+
+      assert.equal(result.status, 1);
+      assert.match(result.stderr, /Cannot find manifest dependency: missing/);
+      assert.doesNotMatch(
+        result.stderr,
+        new RegExp(`Cannot find manifest dependency: ${item.selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      );
+      assert.doesNotMatch(result.stderr, /ambiguous/);
+    });
+  }
+});
+
+test("install provider host selectors disambiguate overlapping manifest repository paths", async () => {
+  await withTempDir(async (cwd) => {
+    await fs.writeFile(
+      path.join(cwd, "cppkg.json"),
+      `${JSON.stringify(
+        {
+          dependencies: [
+            {
+              name: "aaa-github-repo",
+              source: "https://github.com/owner/repo",
+            },
+            {
+              name: "zzz-gitee-repo",
+              source: "https://gitee.com/owner/repo.git",
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    const result = runCli(["install", "gitee.com/owner/repo", "missing"], cwd);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Cannot find manifest dependency: missing/);
+    assert.doesNotMatch(result.stderr, /ambiguous/);
+    assert.doesNotMatch(
+      result.stderr,
+      /Cannot find manifest dependency: gitee\.com\/owner\/repo/,
+    );
   });
 });
 

@@ -143,6 +143,7 @@ cppkg-cli get https://github.com/nlohmann/json --tag v3.12.0
 cppkg-cli get https://github.com/lvgl/lvgl --branch master
 cppkg-cli get https://github.com/owner/repo --prerelease
 cppkg-cli get https://github.com/lvgl/lvgl --full-project
+cppkg-cli get https://github.com/nlohmann/json --no-cache
 ```
 
 ## Manage Packages
@@ -176,6 +177,7 @@ Selectors accepted by `install`, `update`, and `remove`:
 | Manifest dependency name or installed package name | `json` |
 | Repository path | `/nlohmann/json` |
 | Owner/repository | `nlohmann/json` |
+| Provider host shorthand | `github.com/nlohmann/json`, `gitee.com/mirrors/jsoncpp` |
 | Recorded source URL | `https://github.com/nlohmann/json` |
 
 `install` selectors are matched against entries in `cppkg.json`. `update` and `remove` selectors are matched against installed records in `deps.json`.
@@ -189,8 +191,10 @@ cppkg-cli config set proxy http://127.0.0.1:7890
 cppkg-cli config set packageRootDir third_party/cppkg
 cppkg-cli config set includeDirName include
 cppkg-cli config set projectsDirName projects
+cppkg-cli config set cacheDirName cache
 cppkg-cli config get packageRootDir
 cppkg-cli config list
+cppkg-cli config remove proxy
 ```
 
 Supported config keys:
@@ -203,9 +207,10 @@ Supported config keys:
 | `packageRootDir` | `cpp_libs` | Root directory for installed package data. |
 | `includeDirName` | `include` | Shared include directory under `packageRootDir`. |
 | `projectsDirName` | `projects` | Full-project directory under `packageRootDir`. |
+| `cacheDirName` | `cache` | Downloaded archive cache directory under `packageRootDir`. |
 | `depsFileName` | `deps.json` | Installed package metadata file under `packageRootDir`. |
 
-CLI proxy flags override config values:
+CLI proxy flags override config values. Add `--no-cache` to `get`, `install`, or `update` when you need to bypass cached archives and refresh downloads.
 
 ```bash
 cppkg-cli get https://github.com/nlohmann/json \
@@ -222,6 +227,7 @@ your-project/
 ├── cppkg.json
 └── cpp_libs/
     ├── deps.json
+    ├── cache/
     ├── include/
     │   ├── nlohmann/
     │   │   └── json.hpp
@@ -235,6 +241,7 @@ your-project/
 Install behavior:
 
 - Repository sources are checked for published releases through the GitHub or Gitee API.
+- Downloaded archives are cached under the configured cache directory and reused by matching archive URL.
 - If a release archive exposes a usable `include` directory, headers are merged into the configured include directory.
 - If the release archive does not expose a usable `include` directory, the CLI retries with the repository archive.
 - If no usable include directory is found, the package is installed as a full project under the configured projects directory.

@@ -11,7 +11,7 @@ export function registerRemoveCommand(program: Command) {
     .description("Remove an installed package from the configured install directory")
     .argument(
       "<package>",
-      "Installed package name, repository path, owner/repo, or GitHub repository URL",
+      "Installed package name, repository path, owner/repo, or GitHub/Gitee repository URL",
     )
     .action(async (selector) => {
       const result = await removeInstalledPackage(selector);

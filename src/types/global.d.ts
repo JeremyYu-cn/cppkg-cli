@@ -1,6 +1,7 @@
 export type GetPkgOptions = {
   httpProxy?: string;
   httpsProxy?: string;
+  cache?: boolean;
   fullProject?: boolean;
   tag?: string;
   branch?: string;

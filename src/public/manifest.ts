@@ -185,9 +185,10 @@ export async function readPackageManifest(): Promise<PackageManifest> {
 
 export function getManifestDependencyOptions(
   dependency: ManifestDependency,
-  cliOptions: Pick<GetPkgOptions, "httpProxy" | "httpsProxy"> = {},
+  cliOptions: Pick<GetPkgOptions, "cache" | "httpProxy" | "httpsProxy"> = {},
 ): GetPkgOptions {
   return compact({
+    cache: cliOptions.cache,
     httpProxy: cliOptions.httpProxy || undefined,
     httpsProxy: cliOptions.httpsProxy || undefined,
     fullProject: dependency.fullProject,

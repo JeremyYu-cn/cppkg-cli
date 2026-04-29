@@ -9,7 +9,8 @@ import { getVCPkg } from "../tools/download/main";
 import { resolveInputSource } from "../tools/download/sources";
 import { logger } from "../tools/logger";
 
-type InstallOptions = Pick<GetPkgOptions, "httpProxy" | "httpsProxy">;
+type InstallOptions = Pick<GetPkgOptions, "cache" | "httpProxy" | "httpsProxy">;
+type RepositoryProvider = "github" | "gitee";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -27,24 +28,111 @@ function getDependencyLabel(dependency: ManifestDependency) {
   }
 }
 
+function addSelectorVariant(variants: Set<string>, value: string | undefined) {
+  const normalized = value?.trim().replace(/\/+$/, "");
+
+  if (!normalized) {
+    return;
+  }
+
+  variants.add(normalized);
+  variants.add(normalized.replace(/\.git$/i, ""));
+}
+
+function addRepositoryPathVariants(
+  variants: Set<string>,
+  repositoryPath: string,
+  providers: RepositoryProvider[] = [],
+  includeBarePath = true,
+) {
+  const normalizedPath = repositoryPath.trim().replace(/^\/+|\/+$/g, "")
+    .replace(/\.git$/i, "");
+
+  if (!normalizedPath) {
+    return;
+  }
+
+  if (includeBarePath) {
+    addSelectorVariant(variants, normalizedPath);
+    addSelectorVariant(variants, `/${normalizedPath}`);
+  }
+
+  if (providers.includes("github")) {
+    addSelectorVariant(variants, `github.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://github.com/${normalizedPath}`);
+  }
+
+  if (providers.includes("gitee")) {
+    addSelectorVariant(variants, `gitee.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://gitee.com/${normalizedPath}`);
+    addSelectorVariant(variants, `https://gitee.com/${normalizedPath}.git`);
+  }
+}
+
+function resolveURLLikeSelector(value: string) {
+  try {
+    return resolveInputSource(value);
+  } catch {
+    if (/^(?:www\.)?(?:github|gitee)\.com\//i.test(value)) {
+      try {
+        return resolveInputSource(`https://${value}`);
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+}
+
 function getSelectorVariants(dependency: ManifestDependency) {
   const variants = new Set<string>();
 
-  if (dependency.name) {
-    variants.add(dependency.name);
-  }
-
-  variants.add(dependency.source);
+  addSelectorVariant(variants, dependency.name);
+  addSelectorVariant(variants, dependency.source);
 
   try {
     const source = resolveInputSource(dependency.source);
 
-    variants.add(source.packageName);
-    variants.add(source.repositoryPath);
-    variants.add(source.repositoryPath.replace(/^\/+/, ""));
-    variants.add(source.repositoryUrl.replace(/\/+$/, ""));
+    addSelectorVariant(variants, source.packageName);
+    addSelectorVariant(variants, source.repositoryUrl);
+
+    if (source.kind === "github-repository") {
+      addRepositoryPathVariants(variants, source.repositoryPath, ["github"]);
+    } else if (source.kind === "gitee-repository") {
+      addRepositoryPathVariants(variants, source.repositoryPath, ["gitee"]);
+    }
   } catch {
     // Manifest validation should catch invalid sources before this point.
+  }
+
+  return variants;
+}
+
+function getUserSelectorVariants(selector: string) {
+  const variants = new Set<string>();
+  const normalizedSelector = selector.trim().replace(/\/+$/, "");
+  const source = resolveURLLikeSelector(normalizedSelector);
+
+  addSelectorVariant(variants, normalizedSelector);
+
+  if (source?.kind === "github-repository") {
+    addSelectorVariant(variants, source.repositoryUrl);
+    addRepositoryPathVariants(variants, source.repositoryPath, ["github"], false);
+  } else if (source?.kind === "gitee-repository") {
+    addSelectorVariant(variants, source.repositoryUrl);
+    addRepositoryPathVariants(variants, source.repositoryPath, ["gitee"], false);
+  } else if (!source) {
+    addRepositoryPathVariants(
+      variants,
+      normalizedSelector
+        .replace(/^https?:\/\/(?:www\.)?github\.com\//i, "")
+        .replace(/^github\.com\//i, "")
+        .replace(/^https?:\/\/(?:www\.)?gitee\.com\//i, "")
+        .replace(/^gitee\.com\//i, "")
+        .replace(/^https?:\/\/api\.github\.com\/repos\//i, "")
+        .replace(/^https?:\/\/gitee\.com\/api\/v5\/repos\//i, ""),
+    );
   }
 
   return variants;
@@ -54,9 +142,10 @@ function matchesDependencySelector(
   dependency: ManifestDependency,
   selector: string,
 ) {
-  const normalizedSelector = selector.trim().replace(/\/+$/, "");
+  const selectorVariants = getUserSelectorVariants(selector);
+  const dependencyVariants = getSelectorVariants(dependency);
 
-  return getSelectorVariants(dependency).has(normalizedSelector);
+  return [...selectorVariants].some((variant) => dependencyVariants.has(variant));
 }
 
 function resolveSelectedDependencies(
@@ -108,6 +197,7 @@ export function registerInstallCommand(program: Command) {
     )
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
+    .option("--no-cache", "Bypass cached archives and refresh downloads")
     .action(async (selectors: string[], options: InstallOptions) => {
       const manifest = await readPackageManifest();
       const dependencies = resolveSelectedDependencies(

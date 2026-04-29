@@ -62,6 +62,23 @@ export function getProjectsRootPath() {
 }
 
 /**
+ * Resolves the directory used to cache downloaded archives.
+ */
+export function resolveArchiveCachePath() {
+  return path.join(
+    resolvePackageRootPath(),
+    resolveCliConfig().cacheDirName,
+  );
+}
+
+/**
+ * Returns the archive cache directory path and creates it when necessary.
+ */
+export function getArchiveCachePath() {
+  return ensureDir(resolveArchiveCachePath());
+}
+
+/**
  * Returns the path of the dependency metadata file stored under the configured package root.
  */
 export function getDepsFilePath() {

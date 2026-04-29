@@ -30,6 +30,7 @@ export function registerGetCommand(program: Command) {
       "--prerelease",
       "Allow prerelease versions when selecting the latest release",
     )
+    .option("--no-cache", "Bypass cached archives and refresh downloads")
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
     .action(async (repoURLs: string[], options: GetPkgOptions) => {
