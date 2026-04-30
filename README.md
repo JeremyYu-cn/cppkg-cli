@@ -25,7 +25,14 @@ Create a project manifest:
 cppkg-cli init
 ```
 
-Add dependencies to `cppkg.json`:
+Add dependencies from the CLI:
+
+```bash
+cppkg-cli add nlohmann/json
+cppkg-cli add https://github.com/fmtlib/fmt --tag 11.2.0
+```
+
+Or add dependencies to `cppkg.json` manually:
 
 ```json
 {
@@ -56,17 +63,26 @@ Install only selected manifest entries:
 cppkg-cli install json fmt
 ```
 
+Require `cppkg-lock.json` to match the manifest before installing:
+
+```bash
+cppkg-cli install --frozen-lockfile
+```
+
 With the default config, installed files are written under `./cpp_libs`, and package metadata is written to `./cpp_libs/deps.json`.
+Successful installs, updates, and removals also refresh `./cppkg-lock.json`, which records resolved archives and archive SHA-256 integrity data.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
 | `cppkg-cli init` | Create `./cppkg.json`. |
+| `cppkg-cli add <source>` | Add one dependency to `cppkg.json`, optionally installing it. |
 | `cppkg-cli search <query...>` | Search GitHub for C/C++ libraries sorted by stars. |
 | `cppkg-cli install [selector...]` | Install all manifest dependencies, or selected manifest entries. |
 | `cppkg-cli get <source-url...>` | Install one or more package sources directly. |
 | `cppkg-cli list` | List packages tracked in `deps.json`. |
+| `cppkg-cli status` | Check manifest, lockfile, metadata, and installed files. |
 | `cppkg-cli update [selector]` | Update one tracked package, or all packages when no selector is provided. |
 | `cppkg-cli remove <selector>` | Remove one tracked package. |
 | `cppkg-cli config <subcommand>` | Manage project-level defaults in `./cppkg.config.json`. |
@@ -74,6 +90,14 @@ With the default config, installed files are written under `./cpp_libs`, and pac
 Run any command with `--help` for its current options.
 
 ## Manifest
+
+Add entries without editing JSON by hand:
+
+```bash
+cppkg-cli add nlohmann/json
+cppkg-cli add fmtlib/fmt --name fmt --tag 11.2.0
+cppkg-cli add gitee.com/mirrors/jsoncpp --full-project
+```
 
 `cppkg.json` supports a name-to-source map:
 
@@ -191,6 +215,13 @@ List installed packages:
 cppkg-cli list
 ```
 
+Check project consistency:
+
+```bash
+cppkg-cli status
+cppkg-cli doctor
+```
+
 Update all packages, or one package:
 
 ```bash
@@ -262,6 +293,7 @@ Default layout:
 ```text
 your-project/
 ├── cppkg.json
+├── cppkg-lock.json
 └── cpp_libs/
     ├── deps.json
     ├── cache/
@@ -284,7 +316,8 @@ Install behavior:
 - If no usable include directory is found, the package is installed as a full project under the configured projects directory.
 - Repositories without releases and direct remote zip URLs are installed as full projects.
 - Direct archive URLs are installed into a sanitized directory name derived from the source URL.
-- Metadata records the package version, install time, repository URL, archive URL, requested source selection, install mode, and tracked top-level paths.
+- Metadata records the package version, install time, repository URL, archive URL, archive SHA-256 integrity, requested source selection, install mode, and tracked top-level paths.
+- `cppkg-lock.json` records the resolved dependency set used for frozen manifest installs.
 - `remove` deletes tracked paths while preserving paths still referenced by other installed packages.
 - `update` cleans tracked paths first, then reinstalls from the recorded source URL. It reuses the recorded install mode and recorded tag or branch unless new options are provided.
 - If a release does not provide a separate zip asset, the CLI falls back to the provider source archive, such as a GitHub `zipball`.

@@ -25,7 +25,14 @@ npm run dev -- --help
 cppkg-cli init
 ```
 
-在 `cppkg.json` 里添加依赖：
+通过 CLI 添加依赖：
+
+```bash
+cppkg-cli add nlohmann/json
+cppkg-cli add https://github.com/fmtlib/fmt --tag 11.2.0
+```
+
+也可以手动在 `cppkg.json` 里添加依赖：
 
 ```json
 {
@@ -56,17 +63,26 @@ cppkg-cli install
 cppkg-cli install json fmt
 ```
 
+安装前要求 `cppkg-lock.json` 和 manifest 匹配：
+
+```bash
+cppkg-cli install --frozen-lockfile
+```
+
 默认配置下，安装内容会写到 `./cpp_libs`，安装元数据会写到 `./cpp_libs/deps.json`。
+成功安装、更新和删除后，也会刷新 `./cppkg-lock.json`，其中记录解析后的归档和归档 SHA-256 完整性信息。
 
 ## 命令
 
 | 命令 | 作用 |
 | --- | --- |
 | `cppkg-cli init` | 创建 `./cppkg.json`。 |
+| `cppkg-cli add <source>` | 添加一个依赖到 `cppkg.json`，也可以同时安装。 |
 | `cppkg-cli search <query...>` | 在 GitHub 上搜索 C/C++ 库，并按 star 数排序。 |
 | `cppkg-cli install [selector...]` | 安装全部 manifest 依赖，或只安装选中的 manifest 条目。 |
 | `cppkg-cli get <source-url...>` | 直接安装一个或多个包来源。 |
 | `cppkg-cli list` | 查看 `deps.json` 中记录的已安装包。 |
+| `cppkg-cli status` | 检查 manifest、锁文件、元数据和已安装文件。 |
 | `cppkg-cli update [selector]` | 更新一个已安装包；不传 selector 时更新全部包。 |
 | `cppkg-cli remove <selector>` | 删除一个已安装包。 |
 | `cppkg-cli config <subcommand>` | 管理 `./cppkg.config.json` 中的项目级默认配置。 |
@@ -74,6 +90,14 @@ cppkg-cli install json fmt
 每个命令都可以加 `--help` 查看当前支持的选项。
 
 ## Manifest
+
+可以不用手写 JSON，直接添加条目：
+
+```bash
+cppkg-cli add nlohmann/json
+cppkg-cli add fmtlib/fmt --name fmt --tag 11.2.0
+cppkg-cli add gitee.com/mirrors/jsoncpp --full-project
+```
 
 `cppkg.json` 支持依赖名到来源的映射写法：
 
@@ -191,6 +215,13 @@ cppkg-cli search fmt --no-cache
 cppkg-cli list
 ```
 
+检查项目一致性：
+
+```bash
+cppkg-cli status
+cppkg-cli doctor
+```
+
 更新全部包，或更新单个包：
 
 ```bash
@@ -262,6 +293,7 @@ cppkg-cli get https://github.com/nlohmann/json \
 ```text
 your-project/
 ├── cppkg.json
+├── cppkg-lock.json
 └── cpp_libs/
     ├── deps.json
     ├── cache/
@@ -284,7 +316,8 @@ your-project/
 - 如果仍然没有可用 include 目录，会回退为完整项目安装到当前配置的 projects 目录。
 - 没有 release 的仓库和直接远程 zip URL 会按完整项目安装。
 - 直接 archive URL 会安装到一个由来源 URL 生成的清洗后目录名里。
-- 元数据会记录包版本、安装时间、仓库 URL、归档 URL、用户请求的来源选择、安装模式和用于删除的顶层路径。
+- 元数据会记录包版本、安装时间、仓库 URL、归档 URL、归档 SHA-256 完整性、用户请求的来源选择、安装模式和用于删除的顶层路径。
+- `cppkg-lock.json` 会记录解析后的依赖集合，用于 frozen manifest 安装。
 - `remove` 会删除已记录路径，并保留仍被其他包引用的共享路径。
 - `update` 会先清理已记录路径，再按记录来源重新安装。除非传入新的选项，否则会沿用上次记录的安装模式和 tag 或 branch。
 - 如果 release 没有单独 zip 资源，会退回到平台源码归档，比如 GitHub 的 `zipball`。

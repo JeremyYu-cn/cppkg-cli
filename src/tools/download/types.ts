@@ -33,6 +33,9 @@ export type ArchiveDescriptor = {
 export type PreparedArchive = {
   archive: ArchiveDescriptor;
   includeDirs: string[];
+  integrity: {
+    sha256: string;
+  };
   sourceRootPath: string;
 };
 

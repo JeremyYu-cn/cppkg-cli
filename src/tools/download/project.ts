@@ -69,6 +69,7 @@ export async function installProjectPackage(
     "need-compile",
     "full-project",
     options,
+    preparedArchive.integrity.sha256,
   );
 
   await upsertInstalledDependency(installedDependency);

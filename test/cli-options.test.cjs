@@ -46,6 +46,18 @@ test("get help exposes version selection options", async () => {
   });
 });
 
+test("add help exposes manifest write and install options", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["add", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Add one dependency to cppkg\.json/);
+    assert.match(result.stdout, /--name <name>/);
+    assert.match(result.stdout, /--install/);
+    assert.match(result.stdout, /--force/);
+  });
+});
+
 test("update help exposes version selection options", async () => {
   await withTempDir(async (cwd) => {
     const result = runCli(["update", "--help"], cwd);
@@ -67,6 +79,7 @@ test("install help exposes manifest install options", async () => {
     assert.match(result.stdout, /--http-proxy <url>/);
     assert.match(result.stdout, /--https-proxy <url>/);
     assert.match(result.stdout, /--no-cache/);
+    assert.match(result.stdout, /--frozen-lockfile/);
   });
 });
 

@@ -6,6 +6,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { getDefaultInstallTarget } from "../public/config";
 import { getDepsFilePath } from "../public/packagePath";
+import { writePackageLockFromDependencies } from "./lockfile";
 
 const EMPTY_DEPENDENCIES_FILE: InstalledDependenciesFile = {
   dependencies: [],
@@ -151,6 +152,9 @@ export async function writeInstalledDependencies(
   dependencies: InstalledDependency[],
 ) {
   const depsFilePath = getDepsFilePath();
+  const normalizedDependencies = sortDependencies(
+    dependencies.map(normalizeInstalledDependency),
+  );
 
   await fsp.mkdir(path.dirname(depsFilePath), {
     recursive: true,
@@ -159,15 +163,14 @@ export async function writeInstalledDependencies(
     depsFilePath,
     `${JSON.stringify(
       {
-        dependencies: sortDependencies(
-          dependencies.map(normalizeInstalledDependency),
-        ),
+        dependencies: normalizedDependencies,
       },
       null,
       2,
     )}\n`,
     "utf8",
   );
+  await writePackageLockFromDependencies(normalizedDependencies);
 }
 
 /**

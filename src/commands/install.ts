@@ -6,10 +6,16 @@ import {
   readPackageManifest,
 } from "../public/manifest";
 import { getVCPkg } from "../tools/download/main";
+import {
+  getFrozenManifestDependencyOptions,
+  requireLockedManifestDependencies,
+} from "../tools/lockfile";
 import { resolveInputSource } from "../tools/download/sources";
 import { logger } from "../tools/logger";
 
-type InstallOptions = Pick<GetPkgOptions, "cache" | "httpProxy" | "httpsProxy">;
+type InstallOptions = Pick<GetPkgOptions, "cache" | "httpProxy" | "httpsProxy"> & {
+  frozenLockfile?: boolean;
+};
 type RepositoryProvider = "github" | "gitee";
 
 function getErrorMessage(error: unknown) {
@@ -198,6 +204,10 @@ export function registerInstallCommand(program: Command) {
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
     .option("--no-cache", "Bypass cached archives and refresh downloads")
+    .option(
+      "--frozen-lockfile",
+      "Require cppkg-lock.json to match cppkg.json before installing",
+    )
     .action(async (selectors: string[], options: InstallOptions) => {
       const manifest = await readPackageManifest();
       const dependencies = resolveSelectedDependencies(
@@ -210,12 +220,24 @@ export function registerInstallCommand(program: Command) {
         return;
       }
 
+      const lockedDependencies = options.frozenLockfile
+        ? await requireLockedManifestDependencies(dependencies)
+        : [];
+      const getInstallOptions = (dependency: ManifestDependency, index: number) =>
+        options.frozenLockfile
+          ? getFrozenManifestDependencyOptions(
+              dependency,
+              lockedDependencies[index]!,
+              options,
+            )
+          : getManifestDependencyOptions(dependency, options);
+
       if (dependencies.length === 1) {
         const dependency = dependencies[0]!;
 
         await getVCPkg(
           dependency.source,
-          getManifestDependencyOptions(dependency, options),
+          getInstallOptions(dependency, 0),
         );
         return;
       }
@@ -231,7 +253,7 @@ export function registerInstallCommand(program: Command) {
           );
           await getVCPkg(
             dependency.source,
-            getManifestDependencyOptions(dependency, options),
+            getInstallOptions(dependency, index),
           );
         }),
       );

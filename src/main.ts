@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
+import { registerAddCommand } from "./commands/add";
 import { registerConfigCommand } from "./commands/config";
 import { registerGetCommand } from "./commands/get";
 import { registerInitCommand } from "./commands/init";
@@ -10,6 +11,7 @@ import { registerInstallCommand } from "./commands/install";
 import { registerListCommand } from "./commands/list";
 import { registerRemoveCommand } from "./commands/remove";
 import { registerSearchCommand } from "./commands/search";
+import { registerStatusCommand } from "./commands/status";
 import { registerUpdateCommand } from "./commands/update";
 import { logger } from "./tools/logger";
 
@@ -37,12 +39,14 @@ async function main() {
     )
     .version(getPackageVersion());
 
+  registerAddCommand(program);
   registerGetCommand(program);
   registerInitCommand(program);
   registerInstallCommand(program);
   registerListCommand(program);
   registerRemoveCommand(program);
   registerSearchCommand(program);
+  registerStatusCommand(program);
   registerUpdateCommand(program);
   registerConfigCommand(program);
 

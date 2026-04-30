@@ -56,6 +56,17 @@ async function hasUsableCacheFile(cachePath: string) {
   }
 }
 
+async function getFileSha256(filePath: string) {
+  const hash = crypto.createHash("sha256");
+  const stream = fs.createReadStream(filePath);
+
+  for await (const chunk of stream) {
+    hash.update(chunk);
+  }
+
+  return hash.digest("hex");
+}
+
 /**
  * Downloads an archive with curl as a compatibility fallback for hosts that serve HTML to axios.
  */
@@ -240,6 +251,9 @@ export async function prepareArchive(
   return {
     archive,
     includeDirs: await collectIncludeDirs(sourceRootPath),
+    integrity: {
+      sha256: await getFileSha256(archivePath),
+    },
     sourceRootPath,
   };
 }

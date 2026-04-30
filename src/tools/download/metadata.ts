@@ -54,6 +54,7 @@ export function buildInstalledDependency(
   installType: InstalledDependency["type"],
   installMode: InstalledDependency["install"]["mode"],
   options: GetPkgOptions = {},
+  integritySha256?: string,
 ): InstalledDependency {
   const releaseMetadata =
     archive.kind === "github-release" || archive.kind === "gitee-release"
@@ -81,6 +82,7 @@ export function buildInstalledDependency(
       type: archive.kind,
       archiveName: archive.label,
       archiveUrl: archive.url,
+      ...(integritySha256 ? { integrity: { sha256: integritySha256 } } : {}),
       requested: getSourceRequest(inputSource, options),
     },
     install: {

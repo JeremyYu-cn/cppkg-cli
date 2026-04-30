@@ -6,6 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+  addPackageManifestDependency,
   createPackageManifest,
   getManifestDependencyOptions,
   readPackageManifest,
@@ -196,6 +197,69 @@ test("getManifestDependencyOptions combines manifest options with CLI proxies", 
     httpsProxy: "http://127.0.0.1:7890",
     prerelease: true,
     tag: "v1",
+  });
+});
+
+test("addPackageManifestDependency creates cppkg.json from owner/repo shorthand", async () => {
+  await withTempCwd(async () => {
+    const result = await addPackageManifestDependency("nlohmann/json", {
+      tag: "v3.12.0",
+    });
+    const rawManifest = JSON.parse(await fs.readFile("cppkg.json", "utf8"));
+    const manifest = await readPackageManifest();
+
+    assert.equal(path.basename(result.manifestFilePath), "cppkg.json");
+    assert.deepEqual(rawManifest, {
+      dependencies: {
+        json: {
+          source: "https://github.com/nlohmann/json",
+          tag: "v3.12.0",
+        },
+      },
+    });
+    assert.deepEqual(manifest.dependencies, [
+      {
+        name: "json",
+        source: "https://github.com/nlohmann/json",
+        tag: "v3.12.0",
+      },
+    ]);
+  });
+});
+
+test("add CLI writes manifest entries and rejects duplicates unless forced", async () => {
+  await withTempDir(async (cwd) => {
+    const added = runCli(
+      [
+        "add",
+        "github.com/fmtlib/fmt",
+        "--name",
+        "fmtlib",
+        "--branch",
+        "master",
+        "--full-project",
+      ],
+      cwd,
+    );
+
+    assert.equal(added.status, 0);
+
+    const duplicate = runCli(["add", "fmtlib/fmt", "--name", "fmtlib"], cwd);
+
+    assert.equal(duplicate.status, 1);
+    assert.match(duplicate.stderr, /Dependency "fmtlib" already exists/);
+
+    const forced = runCli(
+      ["add", "fmtlib/fmt", "--name", "fmtlib", "--tag", "11.2.0", "--force"],
+      cwd,
+    );
+    const manifest = JSON.parse(await fs.readFile(path.join(cwd, "cppkg.json"), "utf8"));
+
+    assert.equal(forced.status, 0);
+    assert.deepEqual(manifest.dependencies.fmtlib, {
+      source: "https://github.com/fmtlib/fmt",
+      tag: "11.2.0",
+    });
   });
 });
 

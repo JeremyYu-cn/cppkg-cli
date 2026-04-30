@@ -129,6 +129,7 @@ export async function installIncludePackage(
     "header-only",
     "include",
     options,
+    preparedArchive.integrity.sha256,
   );
 
   await upsertInstalledDependency(installedDependency);

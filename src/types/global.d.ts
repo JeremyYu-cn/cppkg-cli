@@ -37,6 +37,9 @@ export type InstalledDependency = {
       | "github-repository";
     archiveName: string;
     archiveUrl: string;
+    integrity?: {
+      sha256: string;
+    };
     requested?: SourceRequest;
   };
   install: {

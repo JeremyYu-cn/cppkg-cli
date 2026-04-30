@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { GetPkgOptions } from "../types/global";
+import { resolveInputSource } from "../tools/download/sources";
 
 export const MANIFEST_FILE_NAME = "cppkg.json";
 
@@ -14,6 +15,13 @@ export type ManifestDependency = {
   prerelease?: boolean; fullProject?: boolean;
 };
 export type PackageManifest = { dependencies: ManifestDependency[] };
+
+export type AddManifestDependencyOptions = Pick<
+  ManifestDependency,
+  "branch" | "fullProject" | "name" | "prerelease" | "tag"
+> & {
+  force?: boolean;
+};
 
 type CreateManifestOptions = { force?: boolean };
 
@@ -78,6 +86,30 @@ function readSource(value: unknown, label: string) {
   }
 
   return parsed.toString();
+}
+
+function normalizeSourceInput(value: string) {
+  const source = readString(value, "source");
+
+  try {
+    return readSource(source, "source");
+  } catch {
+    if (/^(?:www\.)?(?:github|gitee)\.com\//i.test(source)) {
+      return readSource(`https://${source}`, "source");
+    }
+
+    if (/^[^/\s]+\/[^/\s]+$/u.test(source)) {
+      return readSource(`https://github.com/${source}`, "source");
+    }
+
+    throw new Error(
+      "source must be a URL, github.com/owner/repo, gitee.com/owner/repo, or owner/repo.",
+    );
+  }
+}
+
+function normalizeSourceForManifest(value: string) {
+  return resolveInputSource(normalizeSourceInput(value)).repositoryUrl;
 }
 
 function assertDependencyKeys(record: Record<string, unknown>, label: string) {
@@ -155,6 +187,117 @@ export function createPackageManifest(options: CreateManifestOptions = {}) {
   fs.writeFileSync(manifestFilePath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
   return { manifest, manifestFilePath };
+}
+
+async function readManifestForWrite() {
+  const manifestFilePath = getManifestFilePath();
+
+  try {
+    const parsed = JSON.parse(await fsp.readFile(manifestFilePath, "utf8")) as
+      unknown;
+    return readObject(parsed, MANIFEST_FILE_NAME);
+  } catch (error: unknown) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT") {
+      return {
+        dependencies: {},
+      };
+    }
+
+    throw error;
+  }
+}
+
+function getManifestEntryValue(dependency: ManifestDependency) {
+  const entry = compact({
+    source: dependency.source,
+    tag: dependency.tag,
+    branch: dependency.branch,
+    prerelease: dependency.prerelease,
+    fullProject: dependency.fullProject,
+  });
+
+  if (Object.keys(entry).length === 1) {
+    return dependency.source;
+  }
+
+  return entry;
+}
+
+function assertAddOptions(options: AddManifestDependencyOptions) {
+  if (options.tag && options.branch) {
+    throw new Error("Options --tag and --branch cannot be used together.");
+  }
+}
+
+export async function addPackageManifestDependency(
+  sourceInput: string,
+  options: AddManifestDependencyOptions = {},
+) {
+  assertAddOptions(options);
+
+  const source = normalizeSourceForManifest(sourceInput);
+  const sourceDetails = resolveInputSource(source);
+  const name = options.name
+    ? readString(options.name, "dependency name")
+    : sourceDetails.packageName;
+  const dependency = compact({
+    name,
+    source,
+    tag: options.tag,
+    branch: options.branch,
+    prerelease: options.prerelease,
+    fullProject: options.fullProject,
+  }) as ManifestDependency;
+  const manifest = await readManifestForWrite();
+  const dependencies = "dependencies" in manifest ? manifest.dependencies : {};
+
+  if (Array.isArray(dependencies)) {
+    const existingDependencies = parseDependencies(dependencies);
+    const existing = existingDependencies.find(
+      (item) => item.name === name || item.source === source,
+    );
+
+    if (existing && !options.force) {
+      throw new Error(
+        `Dependency "${name}" already exists in ${MANIFEST_FILE_NAME}. Use --force to replace it.`,
+      );
+    }
+
+    manifest.dependencies = [
+      ...dependencies.filter((entry, index) => {
+        const parsed = existingDependencies[index];
+
+        return parsed?.name !== name && parsed?.source !== source;
+      }),
+      dependency,
+    ];
+  } else {
+    const dependencyMap = readObject(dependencies, `${MANIFEST_FILE_NAME} dependencies`);
+
+    parseDependencies(dependencyMap);
+
+    if (name in dependencyMap && !options.force) {
+      throw new Error(
+        `Dependency "${name}" already exists in ${MANIFEST_FILE_NAME}. Use --force to replace it.`,
+      );
+    }
+
+    dependencyMap[name] = getManifestEntryValue(dependency);
+    manifest.dependencies = dependencyMap;
+  }
+
+  await fsp.writeFile(
+    getManifestFilePath(),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
+
+  return {
+    dependency,
+    manifestFilePath: getManifestFilePath(),
+  };
 }
 
 export async function readPackageManifest(): Promise<PackageManifest> {
