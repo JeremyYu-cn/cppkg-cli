@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { registerAddCommand } from "./commands/add";
 import { registerAuditCommand } from "./commands/audit";
+import { registerBugCommand } from "./commands/bug";
 import { registerBuildCommand } from "./commands/build";
 import { registerCacheCommand } from "./commands/cache";
 import { registerCleanCommand } from "./commands/clean";
@@ -13,7 +14,11 @@ import { registerCompletionCommand } from "./commands/completion";
 import { registerConfigCommand } from "./commands/config";
 import { registerCreateCommand } from "./commands/create";
 import { registerDiffCommand } from "./commands/diff";
+import { registerDiagnoseCommand } from "./commands/diagnose";
+import { registerDocsCommand } from "./commands/docs";
+import { registerHomeCommand } from "./commands/home";
 import { registerEnvCommand } from "./commands/env";
+import { registerExecCommand } from "./commands/exec";
 import { registerGetCommand } from "./commands/get";
 import { registerGraphCommand } from "./commands/graph";
 import { registerImportCommand } from "./commands/import";
@@ -24,9 +29,12 @@ import { registerInspectCommand } from "./commands/inspect";
 import { registerIntegrateCommand } from "./commands/integrate";
 import { registerLicensesCommand } from "./commands/licenses";
 import { registerListCommand } from "./commands/list";
+import { registerLockfileCommand } from "./commands/lockfile";
 import { registerMigrateCommand } from "./commands/migrate";
 import { registerOutdatedCommand } from "./commands/outdated";
+import { registerPackCommand } from "./commands/pack";
 import { registerPublishCommand } from "./commands/publish";
+import { registerRebuildCommand } from "./commands/rebuild";
 import { registerRemoveCommand } from "./commands/remove";
 import { registerSearchCommand } from "./commands/search";
 import { registerSelfUpdateCommand } from "./commands/selfUpdate";
@@ -36,6 +44,7 @@ import { registerUpdateCommand } from "./commands/update";
 import { registerVendorCommand } from "./commands/vendor";
 import { registerVerifyCommand } from "./commands/verify";
 import { registerWhyCommand } from "./commands/why";
+import { setLogLevel } from "./tools/logger";
 
 export function getPackageVersion() {
   const packageJsonPath = path.resolve(__dirname, "../package.json");
@@ -59,7 +68,15 @@ export function createProgram(version = getPackageVersion()) {
     .description(
       "Download C/C++ packages into a shared include directory or project workspace",
     )
-    .version(version);
+    .version(version)
+    .option("--verbose", "Enable verbose output")
+    .option("--quiet", "Suppress non-error output");
+
+  program.hook("preAction", (thisCommand: Command) => {
+    const rootOpts = thisCommand.opts();
+    if (rootOpts.quiet) setLogLevel("quiet");
+    else if (rootOpts.verbose) setLogLevel("verbose");
+  });
 
   registerAddCommand(program);
   registerAuditCommand(program);
@@ -67,6 +84,7 @@ export function createProgram(version = getPackageVersion()) {
   registerImportCommand(program);
   registerInitCommand(program);
   registerCompileCommand(program);
+  registerBugCommand(program);
   registerBuildCommand(program);
   registerCompilerCommand(program);
   registerCreateCommand(program);
@@ -74,7 +92,10 @@ export function createProgram(version = getPackageVersion()) {
   registerIntegrateCommand(program);
   registerInspectCommand(program);
   registerListCommand(program);
+  registerLockfileCommand(program);
+  registerPackCommand(program);
   registerPublishCommand(program);
+  registerRebuildCommand(program);
   registerRemoveCommand(program);
   registerSearchCommand(program);
   registerServerCommand(program);
@@ -87,7 +108,11 @@ export function createProgram(version = getPackageVersion()) {
   registerCompletionCommand(program);
   registerConfigCommand(program);
   registerDiffCommand(program);
+  registerDiagnoseCommand(program);
+  registerDocsCommand(program);
+  registerHomeCommand(program);
   registerEnvCommand(program);
+  registerExecCommand(program);
   registerGraphCommand(program);
   registerInfoCommand(program);
   registerLicensesCommand(program);

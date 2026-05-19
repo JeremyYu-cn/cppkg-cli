@@ -10,11 +10,21 @@ export function registerInfoCommand(program: Command) {
     .command("info")
     .description("Show detailed information about an installed package")
     .argument("<package>", "Installed package name or selector")
-    .action(async (selector: string) => {
+    .option("--json", "Output result as JSON")
+    .action(async (selector: string, options: { json?: boolean }) => {
       const info = await getPackageInfo(selector);
 
       if (!info) {
+        if (options.json) {
+          logger.raw(JSON.stringify({ found: false, reason: `Package "${selector}" is not installed.` }));
+          return;
+        }
         throw new Error(`Package "${selector}" is not installed.`);
+      }
+
+      if (options.json) {
+        logger.raw(JSON.stringify(info, null, 2));
+        return;
       }
 
       logger.info(`Package: ${info.name}`);

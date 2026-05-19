@@ -1,6 +1,5 @@
 import type {
   InstalledDependency,
-  SourceRequest,
 } from "../types/global";
 import type { ManifestDependency } from "../public/manifest";
 import { promises as fsp } from "node:fs";
@@ -9,10 +8,10 @@ import { MANIFEST_FILE_NAME, readPackageManifest } from "../public/manifest";
 import { getTrackedInstallPaths, readInstalledDependencies } from "./deps";
 import {
   LOCK_FILE_NAME,
-  type LockedDependency,
   readPackageLock,
 } from "./lockfile";
 import { resolveInputSource } from "./download/sources";
+import { getDependencyIdentity, readManifestSourceRequest, sourceRequestsEqual } from "./dep-utils";
 
 export type ProjectStatusIssue = {
   code: string;
@@ -25,15 +24,6 @@ export type ProjectStatus = {
   issues: ProjectStatusIssue[];
 };
 
-function getDependencyIdentity(
-  dependency: Pick<InstalledDependency | LockedDependency, "repository">,
-) {
-  return (
-    dependency.repository.url.trim().replace(/\/+$/, "").replace(/\.git$/i, "") ||
-    dependency.repository.path
-  );
-}
-
 function getManifestDependencyIdentity(dependency: ManifestDependency) {
   return resolveInputSource(dependency.source).repositoryUrl
     .trim()
@@ -43,65 +33,6 @@ function getManifestDependencyIdentity(dependency: ManifestDependency) {
 
 function getManifestDependencyName(dependency: ManifestDependency) {
   return dependency.name || resolveInputSource(dependency.source).packageName;
-}
-
-function getManifestSourceRequest(dependency: ManifestDependency): SourceRequest {
-  const modifiers = {
-    ...(dependency.includePath?.length ? { includePath: dependency.includePath } : {}),
-    ...(dependency.stripPrefix ? { stripPrefix: dependency.stripPrefix } : {}),
-    ...(dependency.patches?.length ? { patches: dependency.patches } : {}),
-    ...(dependency.components?.length ? { components: dependency.components } : {}),
-    ...(dependency.checksum ? { checksum: dependency.checksum } : {}),
-  };
-
-  if (dependency.tag) {
-    return {
-      ...modifiers,
-      type: "tag",
-      value: dependency.tag,
-    };
-  }
-
-  if (dependency.branch) {
-    return {
-      ...modifiers,
-      type: "branch",
-      value: dependency.branch,
-    };
-  }
-
-  return {
-    ...modifiers,
-    type: "latest-release",
-    value: null,
-    ...(dependency.prerelease ? { includePrerelease: true } : {}),
-  };
-}
-
-function sourceRequestsEqual(left: SourceRequest | undefined, right: SourceRequest) {
-  const arraysEqual = (
-    leftValues: string[] | undefined,
-    rightValues: string[] | undefined,
-  ) => {
-    const normalizedLeft = leftValues ?? [];
-    const normalizedRight = rightValues ?? [];
-
-    return (
-      normalizedLeft.length === normalizedRight.length &&
-      normalizedLeft.every((value, index) => value === normalizedRight[index])
-    );
-  };
-
-  return (
-    left?.type === right.type &&
-    (left.value ?? null) === (right.value ?? null) &&
-    Boolean(left.includePrerelease) === Boolean(right.includePrerelease) &&
-    arraysEqual(left.includePath, right.includePath) &&
-    (left.stripPrefix ?? null) === (right.stripPrefix ?? null) &&
-    arraysEqual(left.patches, right.patches) &&
-    arraysEqual(left.components, right.components) &&
-    (left.checksum ?? null) === (right.checksum ?? null)
-  );
 }
 
 async function pathExists(targetPath: string) {
@@ -211,7 +142,7 @@ export async function getProjectStatus(): Promise<ProjectStatus> {
     } else if (
       !sourceRequestsEqual(
         lockedDependency.source.requested,
-        getManifestSourceRequest(dependency),
+        readManifestSourceRequest(dependency),
       )
     ) {
       issues.push(

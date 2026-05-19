@@ -29,15 +29,15 @@ export function registerCompletionCommand(program: Command) {
   program
     .command("completion")
     .description("Generate shell completion scripts")
-    .argument("<shell>", "Shell type: bash, zsh, or fish")
+    .argument("<shell>", "Shell type: bash, zsh, fish, or powershell")
     .action((shell: string) => {
-      const valid = new Set(["bash", "zsh", "fish"]);
+      const valid = new Set(["bash", "zsh", "fish", "powershell"]);
       if (!valid.has(shell)) {
-        throw new Error(`Unsupported shell "${shell}". Use: bash, zsh, or fish.`);
+        throw new Error(`Unsupported shell "${shell}". Use: bash, zsh, fish, or powershell.`);
       }
 
       const tree = collectCommandTree(program);
-      const script = generateCompletionScript(shell as "bash" | "zsh" | "fish", tree);
+      const script = generateCompletionScript(shell as "bash" | "zsh" | "fish" | "powershell", tree);
 
       process.stdout.write(script + "\n");
     });

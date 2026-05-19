@@ -102,10 +102,15 @@ export function registerWhyCommand(program: Command) {
       "Show which dependency (or dependencies) require the specified package",
     )
     .argument("<package>", "Package name or repository URL to trace")
-    .action(async (packageName: string) => {
+    .option("--json", "Output result as JSON")
+    .action(async (packageName: string, options: { json?: boolean }) => {
       const installed = await readInstalledDependencies();
 
       if (!installed.dependencies.length) {
+        if (options.json) {
+          logger.raw(JSON.stringify({ found: false, reason: "No installed packages found." }));
+          return;
+        }
         logger.warn("No installed packages found.");
         return;
       }
@@ -113,6 +118,10 @@ export function registerWhyCommand(program: Command) {
       const target = findDependency(installed.dependencies, packageName);
 
       if (!target) {
+        if (options.json) {
+          logger.raw(JSON.stringify({ found: false, reason: `Package "${packageName}" is not installed.` }));
+          return;
+        }
         logger.warn(`Package "${packageName}" is not installed.`);
         return;
       }
@@ -120,6 +129,10 @@ export function registerWhyCommand(program: Command) {
       const targetUrl = normalizeUrl(target.repository.url);
 
       if (isDirectDependency(targetUrl, installed.dependencies)) {
+        if (options.json) {
+          logger.raw(JSON.stringify({ found: true, name: target.name, version: target.version, repository: target.repository.url, direct: true }));
+          return;
+        }
         logger.info(`"${target.name}" is a direct dependency.`);
         logger.detail("Version", target.version);
         logger.detail("Repository", target.repository.url);
@@ -127,6 +140,18 @@ export function registerWhyCommand(program: Command) {
       }
 
       const chains = findChainsToTarget(targetUrl, installed.dependencies);
+
+      if (options.json) {
+        logger.raw(JSON.stringify({
+          found: true,
+          name: target.name,
+          version: target.version,
+          repository: target.repository.url,
+          direct: false,
+          chains: chains.map((c) => c.map((d) => ({ name: d.name, version: d.version, repository: d.repository.url }))),
+        }));
+        return;
+      }
 
       if (!chains.length) {
         logger.info(

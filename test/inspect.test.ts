@@ -7,6 +7,10 @@ import path from "node:path";
 
 const cliPath = path.resolve(process.cwd(), "dist/main.js");
 
+function stripAnsi(text: string) {
+  return text.replace(/\x1B\[[0-9;]*[a-zA-Z]/g, "");
+}
+
 async function withTempDir(callback: TempDirCallback) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "cppkg-inspect-test-"));
 
@@ -104,17 +108,18 @@ test("inspect reports installed declared and missing package candidates", async 
     );
 
     const result = runCli(["inspect"], cwd);
+    const output = stripAnsi(result.stdout);
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Inspected 2 C\/C\+\+ file\(s\)/);
-    assert.match(result.stdout, /fmt\s+declared\s+fmt\/core\.h/);
-    assert.match(result.stdout, /nlohmann\s+installed\s+nlohmann\/json\.hpp/);
-    assert.match(result.stdout, /sqlite3\s+missing\s+sqlite3\.h/);
-    assert.match(result.stdout, /sqlite -> https:\/\/github\.com\/sqlite\/sqlite/);
-    assert.doesNotMatch(result.stdout, /vector/);
-    assert.doesNotMatch(result.stdout, /local\.hpp/);
-    assert.doesNotMatch(result.stdout, /boost/);
-    assert.doesNotMatch(result.stdout, /catch2/);
+    assert.match(output, /Inspected 2 C\/C\+\+ file\(s\)/);
+    assert.match(output, /fmt\s+declared\s+fmt\/core\.h/);
+    assert.match(output, /nlohmann\s+installed\s+nlohmann\/json\.hpp/);
+    assert.match(output, /sqlite3\s+missing\s+sqlite3\.h/);
+    assert.match(output, /sqlite -> https:\/\/github\.com\/sqlite\/sqlite/);
+    assert.doesNotMatch(output, /vector/);
+    assert.doesNotMatch(output, /local\.hpp/);
+    assert.doesNotMatch(output, /boost/);
+    assert.doesNotMatch(output, /catch2/);
   });
 });
 

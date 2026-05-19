@@ -44,6 +44,12 @@ export async function diffLockfile(): Promise<DiffResult> {
     lockfileMap.set(identity.toLowerCase(), dep);
   }
 
+  function addDiff(name: string, field: string, oldValue: string, newValue: string) {
+    if (oldValue !== newValue) {
+      entries.push({ name, field, oldValue, newValue });
+    }
+  }
+
   for (const manifestDep of manifest.dependencies) {
     const identity = getManifestSourceIdentity(manifestDep).toLowerCase();
     const locked = lockfileMap.get(identity);
@@ -59,24 +65,18 @@ export async function diffLockfile(): Promise<DiffResult> {
     }
 
     const name = manifestDep.name || locked.name;
+    const req = locked.source.requested;
 
-    if (manifestDep.tag && locked.source.requested?.type !== "tag") {
-      entries.push({
-        name,
-        field: "source",
-        oldValue: `tag:${locked.source.requested?.value || "none"}`,
-        newValue: `tag:${manifestDep.tag}`,
-      });
-    }
-
-    if (manifestDep.branch && locked.source.requested?.type !== "branch") {
-      entries.push({
-        name,
-        field: "source",
-        oldValue: `branch:${locked.source.requested?.value || "none"}`,
-        newValue: `branch:${manifestDep.branch}`,
-      });
-    }
+    addDiff(name, "tag", req?.type === "tag" ? (req.value ?? "") : "", manifestDep.tag ?? "");
+    addDiff(name, "branch", req?.type === "branch" ? (req.value ?? "") : "", manifestDep.branch ?? "");
+    addDiff(name, "versionRange", req?.type === "version-range" ? (req.value ?? "") : "", manifestDep.versionRange ?? "");
+    addDiff(name, "versionPolicy", req?.type ?? "latest-release", manifestDep.versionPolicy ?? "latest-release");
+    addDiff(name, "prerelease", String(req?.includePrerelease ?? false), String(manifestDep.prerelease ?? false));
+    addDiff(name, "includePath", JSON.stringify(req?.includePath ?? []), JSON.stringify(manifestDep.includePath ?? []));
+    addDiff(name, "stripPrefix", req?.stripPrefix ?? "", manifestDep.stripPrefix ?? "");
+    addDiff(name, "patches", JSON.stringify(req?.patches ?? []), JSON.stringify(manifestDep.patches ?? []));
+    addDiff(name, "components", JSON.stringify(req?.components ?? []), JSON.stringify(manifestDep.components ?? []));
+    addDiff(name, "checksum", req?.checksum ?? "", manifestDep.checksum ?? "");
   }
 
   return {

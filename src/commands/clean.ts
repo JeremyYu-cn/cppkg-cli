@@ -9,6 +9,7 @@ type CleanOptions = {
   all?: boolean;
   force?: boolean;
   dryRun?: boolean;
+  json?: boolean;
 };
 
 /**
@@ -21,6 +22,7 @@ export function registerCleanCommand(program: Command) {
     .option("--all", "Remove all cppkg data including cpp_libs/ and lockfile")
     .option("-f, --force", "Skip confirmation prompt")
     .option("--dry-run", "Show what would be removed without deleting")
+    .option("--json", "Output result as JSON")
     .action((options: CleanOptions) => {
       const targets: { path: string; label: string }[] = [];
 
@@ -39,6 +41,31 @@ export function registerCleanCommand(program: Command) {
       }
 
       const existing = targets.filter((t) => fs.existsSync(t.path));
+      const report = existing.map((t) => ({
+        label: t.label,
+        path: path.relative(process.cwd(), t.path) || ".",
+        removed: false,
+      }));
+
+      if (options.json) {
+        if (options.dryRun || !options.force) {
+          logger.raw(JSON.stringify({ items: report, dryRun: !!options.dryRun, confirmed: !!options.force }, null, 2));
+          return;
+        }
+        let removed = 0;
+        for (let i = 0; i < existing.length; i++) {
+          const t = existing[i]!;
+          try {
+            fs.rmSync(t.path, { force: true, recursive: true });
+            report[i]!.removed = true;
+            removed++;
+          } catch {
+            // report[i]!.removed stays false
+          }
+        }
+        logger.raw(JSON.stringify({ items: report, removed, total: report.length }, null, 2));
+        return;
+      }
 
       if (!existing.length) {
         logger.warn("Nothing to clean.");

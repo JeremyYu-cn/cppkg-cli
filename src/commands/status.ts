@@ -2,16 +2,23 @@ import { Command } from "commander";
 import { getProjectStatus } from "../tools/status";
 import { logger } from "../tools/logger";
 
-/**
- * Registers the command that checks manifest, lockfile, metadata, and files.
- */
+type StatusOptions = {
+  json?: boolean;
+};
+
 export function registerStatusCommand(program: Command) {
   program
     .command("status")
     .alias("doctor")
     .description("Check cppkg manifest, lockfile, metadata, and installed files")
-    .action(async () => {
+    .option("--json", "Output as JSON")
+    .action(async (options: StatusOptions) => {
       const status = await getProjectStatus();
+
+      if (options.json) {
+        logger.raw(JSON.stringify(status, null, 2));
+        return;
+      }
 
       if (!status.issues.length) {
         logger.success("Project status is clean.");

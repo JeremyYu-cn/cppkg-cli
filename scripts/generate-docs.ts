@@ -295,6 +295,94 @@ function collectCommand(command: CommandLike): CommandDoc {
   };
 }
 
+function escapeRoff(text: string) {
+  return text.replace(/\\/g, "\\\\").replace(/'/g, "\\[cq]").replace(/"/g, "\\[dq]").replace(/-/g, "\\-");
+}
+
+function generateManPage(reference: Record<string, unknown>) {
+  const ref = reference as {
+    description?: string;
+    name?: string;
+    version?: string;
+    root?: { usage?: string; options?: Array<{ flags: string; description: string }> };
+    commands?: Array<{
+      command?: string;
+      description?: string;
+      usage?: string;
+      options?: Array<{ flags: string; description: string }>;
+      arguments?: Array<{ name: string; description: string; required: boolean }>;
+      examples?: string[];
+    }>;
+  };
+
+  const lines: string[] = [
+    `.TH CPPKG-CLI 1 "${new Date().toISOString().split("T")[0]}" "cppkg-cli ${ref.version || ""}" "User Commands"`,
+    ".SH NAME",
+    `cppkg-cli \\- ${escapeRoff(ref.description || "C/C++ package manager")}`,
+    ".SH SYNOPSIS",
+    `.B cppkg-cli`,
+    `[${escapeRoff(ref.root?.usage || "options")}]`,
+    ".SH DESCRIPTION",
+    escapeRoff(ref.description || ""),
+  ];
+
+  if (ref.root?.options?.length) {
+    lines.push(".SH OPTIONS");
+    for (const opt of ref.root.options) {
+      lines.push(`.TP`);
+      lines.push(`.B ${escapeRoff(opt.flags)}`);
+      lines.push(escapeRoff(opt.description));
+    }
+  }
+
+  if (ref.commands?.length) {
+    lines.push(".SH COMMANDS");
+    for (const cmd of ref.commands) {
+      lines.push(`.TP`);
+      lines.push(`.B ${escapeRoff(cmd.command || "")}`);
+      lines.push(escapeRoff(cmd.description || ""));
+
+      if (cmd.arguments?.length) {
+        lines.push(".RS");
+        lines.push("Arguments:");
+        for (const arg of cmd.arguments) {
+          lines.push(`.TP`);
+          lines.push(`.I ${escapeRoff(arg.name)}`);
+          lines.push(`${arg.required ? "Required. " : ""}${escapeRoff(arg.description)}`);
+        }
+        lines.push(".RE");
+      }
+
+      if (cmd.options?.length) {
+        lines.push(".RS");
+        lines.push("Options:");
+        for (const opt of cmd.options) {
+          lines.push(`.TP`);
+          lines.push(`.B ${escapeRoff(opt.flags)}`);
+          lines.push(escapeRoff(opt.description));
+        }
+        lines.push(".RE");
+      }
+
+      if (cmd.examples?.length) {
+        lines.push(".RS");
+        lines.push("Examples:");
+        for (const ex of cmd.examples) {
+          lines.push(`.IP`);
+          lines.push(`.B ${escapeRoff(ex)}`);
+        }
+        lines.push(".RE");
+      }
+    }
+  }
+
+  lines.push(".SH SEE ALSO");
+  lines.push(`.BR cppkg.json (5),`);
+  lines.push(`.BR cppkg-lock.json (5)`);
+  lines.push("");
+  return lines.join("\n");
+}
+
 export async function generateDocs() {
   const packageJson = JSON.parse(
     await readFile(path.join(rootDir, "package.json"), "utf8"),
@@ -333,8 +421,16 @@ export async function generateDocs() {
     `${JSON.stringify(reference, null, 2)}\n`,
   );
 
+  const manDir = path.join(rootDir, "man");
+  await mkdir(manDir, { recursive: true });
+  const manContent = generateManPage(reference);
+  await writeFile(path.join(manDir, "cppkg-cli.1"), manContent);
+
   process.stdout.write(
     `${pc.green(pc.bold("[ok]"))} Generated docs/commands.json\n`,
+  );
+  process.stdout.write(
+    `${pc.green(pc.bold("[ok]"))} Generated man/cppkg-cli.1\n`,
   );
 }
 

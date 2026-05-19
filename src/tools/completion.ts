@@ -126,13 +126,47 @@ function generateFish(tree: CommandDoc): string {
   return lines.join("\n");
 }
 
+function generatePowerShell(tree: CommandDoc): string {
+  const lines: string[] = [
+    "# cppkg-cli PowerShell completion",
+    "Register-ArgumentCompleter -Native -CommandName cppkg-cli -ScriptBlock {",
+    "  param($wordToComplete, $commandAst, $cursorPosition)",
+    '  $commands = @(',
+  ];
+
+  const cmdNames = tree.subcommands
+    .filter((s) => !s.command.startsWith("help"))
+    .map((s) => `    "${s.command}"`);
+  lines.push(cmdNames.join("\n"));
+  lines.push("  )");
+
+  lines.push("", '  switch ($commandAst.CommandElements[1].Value) {');
+
+  for (const sub of tree.subcommands) {
+    const opts = extractFlags(sub.options).map((f) => `--${f}`);
+    if (opts.length > 0) {
+      lines.push(`    "${sub.command}" {`);
+      lines.push(`      $opts = @(${opts.map((o) => `"${o}"`).join(", ")})`);
+      lines.push('      return $opts | Where-Object { $_ -like "$wordToComplete*" }');
+      lines.push("    }");
+    }
+  }
+
+  lines.push('    default { return $commands | Where-Object { $_ -like "$wordToComplete*" } }');
+  lines.push("  }");
+  lines.push("}");
+
+  return lines.join("\n");
+}
+
 export function generateCompletionScript(
-  shell: "bash" | "zsh" | "fish",
+  shell: "bash" | "zsh" | "fish" | "powershell",
   tree: CommandDoc,
 ): string {
   switch (shell) {
     case "bash": return generateBash(tree);
     case "zsh": return generateZsh(tree);
     case "fish": return generateFish(tree);
+    case "powershell": return generatePowerShell(tree);
   }
 }

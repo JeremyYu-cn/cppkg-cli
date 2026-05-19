@@ -35,6 +35,46 @@ test("root version flag follows package.json", async () => {
   });
 });
 
+test("env --json outputs valid JSON diagnostics", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["env", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.doesNotThrow(() => JSON.parse(result.stdout));
+    const parsed = JSON.parse(result.stdout) as Record<string, string>;
+    assert.equal(typeof parsed["Platform"], "string");
+    assert.equal(typeof parsed["Node.js Version"], "string");
+    assert.equal(typeof parsed["C++ Compiler"], "string");
+  });
+});
+
+test("docs help exposes documentation command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["docs", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Open the cppkg-cli documentation site/);
+  });
+});
+
+test("home help exposes repository command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["home", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Open the cppkg-cli GitHub repository/);
+  });
+});
+
+test("bug help exposes issue tracker command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["bug", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Open the cppkg-cli issue tracker/);
+  });
+});
+
 test("get help exposes version selection options", async () => {
   await withTempDir(async (cwd) => {
     const result = runCli(["get", "--help"], cwd);
@@ -232,11 +272,364 @@ test("update rejects explicit version selection without a package selector", asy
   });
 });
 
+test("uninstall alias for remove works", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["uninstall", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Remove an installed package/);
+  });
+});
+
+test("exec runs a command with CPPKG environment variables", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["exec", "echo", "$CPPKG_INCLUDE_DIR"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /cpp_libs\/include/);
+  });
+});
+
+test("exec help exposes subprocess command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["exec", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Run a command with CPPKG_INCLUDE_DIR/);
+  });
+});
+
+test("inspect --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["inspect", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(typeof parsed.filesScanned, "number");
+    assert.equal(typeof parsed.includeCount, "number");
+    assert.ok(Array.isArray(parsed.packages));
+  });
+});
+
+test("diagnose --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["diagnose", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(typeof parsed.nodeVersion, "string");
+    assert.equal(typeof parsed.platform, "string");
+    assert.equal(typeof parsed.manifestExists, "boolean");
+    assert.equal(typeof parsed.lockfileExists, "boolean");
+  });
+});
+
+test("diagnose command displays environment info", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["diagnose"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Node\.js/);
+    assert.match(result.stdout, /Platform/);
+  });
+});
+
+test("verify --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["verify", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(typeof parsed.verified, "number");
+    assert.equal(typeof parsed.passed, "number");
+    assert.ok(Array.isArray(parsed.issues));
+  });
+});
+
+test("clean --json outputs valid JSON in dry-run mode", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["clean", "--json", "--dry-run"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.ok(Array.isArray(parsed.items));
+    assert.equal(typeof parsed.dryRun, "boolean");
+    assert.equal(typeof parsed.confirmed, "boolean");
+  });
+});
+
+test("graph --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["graph", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.ok(Array.isArray(parsed));
+    for (const entry of parsed) {
+      assert.equal(typeof entry.name, "string");
+      assert.equal(typeof entry.version, "string");
+      assert.equal(typeof entry.repository, "string");
+      assert.ok(Array.isArray(entry.children));
+    }
+  });
+});
+
+test("diff --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["diff", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.equal(typeof parsed.lockfileMissing, "boolean");
+    assert.equal(typeof parsed.manifestChanged, "boolean");
+    assert.ok(Array.isArray(parsed.entries));
+  });
+});
+
+test("audit --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["audit", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    const parsed = JSON.parse(result.stdout);
+    assert.ok(Array.isArray(parsed.results));
+    assert.equal(typeof parsed.totalAdvisories, "number");
+  });
+});
+
+test("rebuild help exposes reinstall command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["rebuild", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Reinstall all packages from scratch/);
+  });
+});
+
+test("licenses --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["licenses", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.doesNotThrow(() => JSON.parse(result.stdout));
+    assert.ok(Array.isArray(JSON.parse(result.stdout)));
+  });
+});
+
+test("status --json outputs valid JSON", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["status", "--json"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.doesNotThrow(() => JSON.parse(result.stdout));
+    const parsed = JSON.parse(result.stdout) as { issues: unknown[] };
+    assert.ok(Array.isArray(parsed.issues));
+  });
+});
+
+test("verify --fix exposes re-download option", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["verify", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Re-download packages that fail checksum verification/);
+  });
+});
+
 test("remove reports missing dependency metadata cleanly", async () => {
   await withTempDir(async (cwd) => {
     const result = runCli(["remove", "missing"], cwd);
 
     assert.equal(result.status, 1);
     assert.match(result.stderr, /No installed packages found/);
+  });
+});
+
+test("lockfile help exposes subcommands", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["lockfile", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Manage cppkg-lock\.json/);
+    assert.match(result.stdout, /check/);
+    assert.match(result.stdout, /regenerate/);
+    assert.match(result.stdout, /dedupe/);
+  });
+});
+
+test("lockfile check validates lockfile consistency", async () => {
+  await withTempDir(async (cwd) => {
+    // No lockfile or manifest exists yet
+    const result = runCli(["lockfile", "check"], cwd);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Cannot find cppkg-lock\.json/);
+  });
+});
+
+test("lockfile dedupe succeeds when lockfile has no duplicates", async () => {
+  await withTempDir(async (cwd) => {
+    // Write a minimal cppkg.json and cppkg-lock.json
+    await fs.writeFile(path.join(cwd, "cppkg.json"), JSON.stringify({ dependencies: {} }), "utf8");
+    await fs.writeFile(
+      path.join(cwd, "cppkg-lock.json"),
+      JSON.stringify({ lockfileVersion: 1, dependencies: [] }),
+      "utf8",
+    );
+
+    const result = runCli(["lockfile", "dedupe"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /No duplicate entries/);
+  });
+});
+
+test("pack help exposes tarball creation command", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["pack", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Create a distributable tarball/);
+    assert.match(result.stdout, /--output <path>/);
+  });
+});
+
+test("pack fails without cppkg.json", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["pack"], cwd);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /No cppkg\.json found/);
+  });
+});
+
+test("pack creates a tarball with cppkg.json present", async () => {
+  await withTempDir(async (cwd) => {
+    await fs.writeFile(
+      path.join(cwd, "cppkg.json"),
+      JSON.stringify({ name: "test-lib", version: "1.0.0", dependencies: {} }),
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(cwd, "cppkg-lock.json"),
+      JSON.stringify({ lockfileVersion: 1, dependencies: [] }),
+      "utf8",
+    );
+
+    const result = runCli(["pack"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /test-lib-1\.0\.0\.tgz/);
+  });
+});
+
+test("pack --output writes to specified path", async () => {
+  await withTempDir(async (cwd) => {
+    await fs.writeFile(
+      path.join(cwd, "cppkg.json"),
+      JSON.stringify({ name: "mylib", version: "2.0.0", dependencies: {} }),
+      "utf8",
+    );
+    await fs.writeFile(
+      path.join(cwd, "cppkg-lock.json"),
+      JSON.stringify({ lockfileVersion: 1, dependencies: [] }),
+      "utf8",
+    );
+
+    const outPath = path.join(cwd, "dist", "mylib.tgz");
+    const result = runCli(["pack", "--output", outPath], cwd);
+
+    assert.equal(result.status, 0);
+    const exists = await fs.stat(outPath).then(() => true).catch(() => false);
+    assert.equal(exists, true);
+  });
+});
+
+test("publish --dry-run requires git repo", async () => {
+  await withTempDir(async (cwd) => {
+    await fs.writeFile(
+      path.join(cwd, "cppkg.json"),
+      JSON.stringify({ name: "test", version: "1.0.0", dependencies: {} }),
+      "utf8",
+    );
+
+    const result = runCli(["publish", "--dry-run"], cwd);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /not a git repository/);
+  });
+});
+
+test("publish help shows --dry-run option", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["publish", "--help"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /--dry-run/);
+    assert.match(result.stdout, /Preview what would be published/);
+  });
+});
+
+test("completion powershell generates PowerShell completion script", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["completion", "powershell"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Register-ArgumentCompleter/);
+    assert.match(result.stdout, /cppkg-cli/);
+  });
+});
+
+test("completion rejects invalid shell", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["completion", "invalid"], cwd);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unsupported shell/);
+  });
+});
+
+test("init --template cmake-header-only scaffolds header-only project", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["init", "--template", "cmake-header-only"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Scaffolded cmake-header-only/);
+
+    const cmakeExists = await fs.stat(path.join(cwd, "CMakeLists.txt")).then(() => true).catch(() => false);
+    assert.equal(cmakeExists, true);
+
+    const headerExists = await fs.stat(path.join(cwd, "include", "my-library", "my-library.hpp")).then(() => true).catch(() => false);
+    assert.equal(headerExists, true);
+  });
+});
+
+test("init --template cmake-executable scaffolds executable project", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["init", "--template", "cmake-executable"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Scaffolded cmake-executable/);
+
+    const mainCppExists = await fs.stat(path.join(cwd, "src", "main.cpp")).then(() => true).catch(() => false);
+    assert.equal(mainCppExists, true);
+  });
+});
+
+test("init --template cmake-library scaffolds compiled library project", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["init", "--template", "cmake-library"], cwd);
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /Scaffolded cmake-library/);
+  });
+});
+
+test("init --template rejects unknown template", async () => {
+  await withTempDir(async (cwd) => {
+    const result = runCli(["init", "--template", "nonexistent"], cwd);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unknown template/);
   });
 });

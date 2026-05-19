@@ -3,6 +3,7 @@ import { promises as fsp } from "node:fs";
 import path from "node:path";
 import type { GetPkgOptions, ManifestDependencyHooks, VersionPolicy } from "../types/global";
 import { resolveInputSource } from "../tools/download/sources";
+import { ManifestError } from "../tools/errors";
 
 export const MANIFEST_FILE_NAME = "cppkg.json";
 
@@ -760,7 +761,7 @@ export async function readPackageManifest(): Promise<PackageManifest> {
     const nodeError = error as NodeJS.ErrnoException;
 
     if (nodeError.code === "ENOENT") {
-      throw new Error(`Cannot find ${MANIFEST_FILE_NAME}. Run "cppkg-cli init" first.`);
+      throw new ManifestError(`Cannot find ${MANIFEST_FILE_NAME}. Run "cppkg-cli init" first.`);
     }
 
     throw error;

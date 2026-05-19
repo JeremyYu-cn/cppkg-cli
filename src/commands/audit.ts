@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { auditPackages, type AuditOptions, type SeverityLevel } from "../tools/audit";
+import { logger } from "../tools/logger";
 
 /**
  * Registers the command that audits installed packages against the GitHub Advisory Database.
@@ -13,7 +14,8 @@ export function registerAuditCommand(program: Command) {
       "Filter advisories by minimum severity (low, medium, high, critical)",
     )
     .option("--fix", "Suggest updates for packages with vulnerabilities")
-    .action(async (options: { level?: string; fix?: boolean }) => {
+    .option("--json", "Output results as JSON")
+    .action(async (options: { level?: string; fix?: boolean; json?: boolean }) => {
       const auditOptions: AuditOptions = {};
 
       if (options.level) {
@@ -37,6 +39,12 @@ export function registerAuditCommand(program: Command) {
         auditOptions.fix = true;
       }
 
-      await auditPackages(auditOptions);
+      auditOptions.json = !!options.json;
+
+      const result = await auditPackages(auditOptions);
+
+      if (options.json) {
+        logger.raw(JSON.stringify(result, null, 2));
+      }
     });
 }

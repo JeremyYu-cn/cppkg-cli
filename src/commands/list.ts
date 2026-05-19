@@ -90,13 +90,34 @@ export function registerListCommand(program: Command) {
     .description("List installed packages tracked in the configured deps file")
     .option("--tree", "Show a tree view of installed dependencies")
     .option("--graph", "Alias for --tree")
-    .action(async (options: { tree?: boolean; graph?: boolean }) => {
+    .option("--json", "Output as JSON")
+    .action(async (options: { tree?: boolean; graph?: boolean; json?: boolean }) => {
       const installed = await readInstalledDependencies();
       const packageRootPath =
         path.relative(process.cwd(), resolvePackageRootPath()) || ".";
 
       if (!installed.dependencies.length) {
+        if (options.json) {
+          logger.raw(JSON.stringify({ dependencies: [], packageRoot: packageRootPath }));
+          return;
+        }
         logger.warn(`No installed packages found in ${packageRootPath}.`);
+        return;
+      }
+
+      if (options.json) {
+        const jsonOutput = installed.dependencies.map((dependency) => ({
+          name: dependency.name,
+          mode: dependency.install.mode,
+          type: dependency.type,
+          version: dependency.version,
+          installedAt: dependency.installedAt,
+          requested: formatSourceRequest(dependency.source.requested),
+          target: dependency.install.target,
+          repository: dependency.repository.url,
+          headers: dependency.install.headers,
+        }));
+        logger.raw(JSON.stringify(jsonOutput, null, 2));
         return;
       }
 

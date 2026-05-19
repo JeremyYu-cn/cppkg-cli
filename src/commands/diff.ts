@@ -6,8 +6,14 @@ export function registerDiffCommand(program: Command) {
   program
     .command("diff")
     .description("Show differences between manifest and lockfile")
-    .action(async () => {
+    .option("--json", "Output result as JSON")
+    .action(async (options: { json?: boolean }) => {
       const result = await diffLockfile();
+
+      if (options.json) {
+        logger.raw(JSON.stringify(result, null, 2));
+        return;
+      }
 
       if (result.lockfileMissing) {
         logger.warn("No lockfile found. Run cppkg-cli install first.");

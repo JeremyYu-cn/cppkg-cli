@@ -5,7 +5,30 @@ type TableRow = Record<string, unknown>;
 type WritableStream = NodeJS.WriteStream;
 type LoggerSink = (line: string, stream: "stderr" | "stdout") => void;
 
+export type LogLevel = "quiet" | "error" | "warn" | "info" | "verbose";
+
 const loggerSinkStorage = new AsyncLocalStorage<LoggerSink>();
+let currentLevel: LogLevel = "info";
+
+export function setLogLevel(level: LogLevel) {
+  currentLevel = level;
+}
+
+export function getLogLevel(): LogLevel {
+  return currentLevel;
+}
+
+const LEVEL_ORDER: Record<LogLevel, number> = {
+  quiet: 0,
+  error: 1,
+  warn: 2,
+  info: 3,
+  verbose: 4,
+};
+
+function shouldLog(minLevel: LogLevel): boolean {
+  return LEVEL_ORDER[currentLevel] >= LEVEL_ORDER[minLevel];
+}
 
 function writeLine(message = "", stream: WritableStream = process.stdout) {
   const line = String(message);
@@ -48,30 +71,38 @@ export const logger = {
     writeLine(stringifyValue(value));
   },
   info(message: string) {
+    if (!shouldLog("info")) return;
     writeLine(`${formatTag("info", pc.cyan)} ${message}`);
   },
   success(message: string) {
+    if (!shouldLog("info")) return;
     writeLine(`${formatTag("ok", pc.green)} ${message}`);
   },
   warn(message: string) {
+    if (!shouldLog("warn")) return;
     writeLine(`${formatTag("warn", pc.yellow)} ${message}`);
   },
   error(message: string) {
     writeLine(`${formatTag("error", pc.red)} ${message}`, process.stderr);
   },
   progress(message: string) {
+    if (!shouldLog("info")) return;
     writeLine(`${pc.dim("...")} ${message}`);
   },
   step(current: number, total: number, message: string) {
+    if (!shouldLog("info")) return;
     writeLine(`${pc.dim(`[${current}/${total}]`)} ${message}`);
   },
   detail(label: string, value: unknown) {
+    if (!shouldLog("verbose")) return;
     writeLine(`${pc.dim(`${label}:`)} ${stringifyValue(value)}`);
   },
   table(rows: TableRow[]) {
     if (!rows.length) {
       return;
     }
+
+    if (!shouldLog("info")) return;
 
     const columns = getTableColumns(rows);
     const widths = new Map(

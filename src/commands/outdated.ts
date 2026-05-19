@@ -7,6 +7,7 @@ import type { GetPkgOptions } from "../types/global";
 
 type OutdatedOptions = Pick<GetPkgOptions, "httpProxy" | "httpsProxy"> & {
   prerelease?: boolean;
+  json?: boolean;
 };
 
 /**
@@ -23,6 +24,7 @@ export function registerOutdatedCommand(program: Command) {
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
     .option("--prerelease", "Include prerelease versions when checking")
+    .option("--json", "Output as JSON")
     .action(async (selectors: string[], options: OutdatedOptions) => {
       const installed = await readInstalledDependencies();
 
@@ -51,6 +53,37 @@ export function registerOutdatedCommand(program: Command) {
         logger.info(`Checking ${toCheck.length} package(s) for updates.`);
       } else {
         logger.info(`Checking ${toCheck.length} installed package(s) for updates.`);
+      }
+
+      if (options.json) {
+        const results: Array<Record<string, unknown>> = [];
+
+        for (const dep of toCheck) {
+          try {
+            const result = await checkPackageOutdated(dep, options);
+            const entry: Record<string, unknown> = {
+              name: dep.name,
+              current: result.currentVersion,
+              outdated: result.outdated,
+              source: dep.repository.url,
+            };
+            if (result.latestVersion !== undefined) entry.latest = result.latestVersion;
+            if (result.error !== undefined) entry.error = result.error;
+            results.push(entry);
+          } catch (error: unknown) {
+            const entry: Record<string, unknown> = {
+              name: dep.name,
+              current: dep.version || "unknown",
+              outdated: false,
+              source: dep.repository.url,
+            };
+            entry.error = getErrorMessage(error);
+            results.push(entry);
+          }
+        }
+
+        logger.raw(JSON.stringify(results, null, 2));
+        return;
       }
 
       let foundOutdated = false;

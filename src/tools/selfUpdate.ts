@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import semver from "semver";
 
 export type SelfUpdateResult = {
   currentVersion: string;
@@ -34,7 +35,7 @@ export async function checkSelfUpdate(): Promise<SelfUpdateResult> {
       return { currentVersion, latestVersion: null, outdated: false, error: "Could not fetch latest version" };
     }
 
-    const outdated = latestVersion !== currentVersion;
+    const outdated = semver.gt(latestVersion, currentVersion);
 
     return { currentVersion, latestVersion, outdated };
   } catch (error: unknown) {

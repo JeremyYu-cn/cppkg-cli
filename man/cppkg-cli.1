@@ -1,122 +1,959 @@
-.TH CPPKG\-CLI 1 "2026-05-13" "1.1.2" "C/C++ Package Manager"
+.TH CPPKG-CLI 1 "2026-05-19" "cppkg-cli 1.1.3" "User Commands"
 .SH NAME
-cppkg\-cli \- project\-local C/C++ dependency manager
+cppkg-cli \- Download C/C++ packages into a shared include directory or project workspace
 .SH SYNOPSIS
-.B cppkg\-cli
-[\fIoptions\fR] \fIcommand\fR [\fIargs\fR]
+.B cppkg-cli
+[cppkg\-cli [options] [command]]
 .SH DESCRIPTION
-cppkg\-cli downloads C and C++ dependencies into the current project workspace.
-It keeps headers, source projects, cache files, lock data, and metadata
-under a local directory (default \fBcpp_libs/\fR) instead of installing
-libraries into system directories.
-.SH COMMANDS
-.TP
-.B add
-Add a dependency to cppkg.json, optionally installing it.
-.TP
-.B audit
-Check installed packages against known vulnerabilities.
-.TP
-.B build
-Configure and build a CMake project with cppkg include paths.
-.TP
-.B cache
-Manage downloaded archive cache (subcommands: list, clean).
-.TP
-.B clean
-Remove installed packages, cache, and lockfile.
-.TP
-.B cmake
-Generate a cppkg.cmake integration helper.
-.TP
-.B compile
-Compile C/C++ source files with cppkg include paths.
-.TP
-.B completion
-Generate shell completion scripts for bash, zsh, or fish.
-.TP
-.B compiler
-Manage compiler versions and Docker-backed compiler profiles.
-.TP
-.B config
-Manage project-level cppkg settings (subcommands: get, set, list, remove).
-.TP
-.B create
-Scaffold a new C/C++ library project.
-.TP
-.B get
-Download a package from a Git repository or archive URL.
-.TP
-.B import
-Import dependencies from vcpkg.json or conanfile.txt.
-.TP
-.B info
-Show detailed information about an installed package.
-.TP
-.B init
-Create a cppkg.json package manifest.
-.TP
-.B inspect
-Inspect C/C++ source includes and report package needs.
-.TP
-.B install
-Install dependencies declared in cppkg.json.
-.TP
-.B integrate
-Modify CMakeLists.txt to auto-include cppkg headers and projects.
-.TP
-.B list
-List installed packages (with --tree for dependency graph).
-.TP
-.B outdated
-Check installed packages for newer available versions.
-.TP
-.B publish
-Publish the project as a package archive to GitHub releases.
-.TP
-.B remove
-Remove an installed package from the configured install directory.
-.TP
-.B search
-Search GitHub for C/C++ libraries sorted by stars.
-.TP
-.B server
-Start a local web server for browsing and downloading packages.
-.TP
-.B status
-Check project health (manifest, lockfile, metadata, installed files).
-.TP
-.B update
-Update installed packages to newer versions.
-.TP
-.B vendor
-Copy installed packages into a vendor/ directory.
-.TP
-.B why
-Show why a package is installed (dependency chain).
+Download C/C++ packages into a shared include directory or project workspace
 .SH OPTIONS
 .TP
 .B \-V, \-\-version
-Output the version number.
+output the version number
 .TP
-.B \-h, \-\-help
-Display help for a command.
-.SH FILES
+.B \-\-verbose
+Enable verbose output
 .TP
-.I cppkg.json
-Project dependency manifest.
+.B \-\-quiet
+Suppress non\-error output
+.SH COMMANDS
 .TP
-.I cppkg-lock.json
-Resolved archive URLs and integrity data.
+.B cppkg\-cli add
+Add one dependency to cppkg.json, optionally installing it
+.RS
+Arguments:
 .TP
-.I cppkg.config.json
-Optional project config (tokens, proxy, paths).
+.I source
+Required. GitHub owner/repo, GitHub/Gitee repository URL, or direct zip archive URL
+.RE
+.RS
+Options:
 .TP
-.I cpp_libs/
-Default package data directory (configurable via cppkg.config.json).
-.SH BUGS
-Report issues at https://github.com/JeremyYu-cn/cppkg-cli/issues
-.SH AUTHOR
-Jeremy Yu
-.SH LICENSE
-MIT
+.B \-\-name <name>
+Dependency name to write in cppkg.json
+.TP
+.B \-\-tag <tag>
+Install a specific release tag or repository tag
+.TP
+.B \-\-branch <branch>
+Install a specific repository branch
+.TP
+.B \-\-version\-range <range>
+Install the latest release matching a semantic version range
+.TP
+.B \-\-version\-policy <policy>
+Manifest version policy: latest\-release, latest\-prerelease, or default\-branch
+.TP
+.B \-\-prerelease
+Allow prerelease versions when selecting the latest release
+.TP
+.B \-\-full\-project
+Install the package as a full project and skip include\-directory detection
+.TP
+.B \-\-include\-path <path>
+Archive\-relative include directory to write in cppkg.json; may be repeated
+.TP
+.B \-\-strip\-prefix <path>
+Archive\-relative directory to install from
+.TP
+.B \-\-patches <path>
+Project\-relative patch file to apply after extraction; may be repeated
+.TP
+.B \-\-components <name>
+Top\-level include/project entry to install; may be repeated
+.TP
+.B \-\-checksum <sha256>
+Expected archive SHA\-256 checksum
+.TP
+.B \-\-install
+Install the dependency after writing cppkg.json
+.TP
+.B \-f, \-\-force
+Replace an existing manifest dependency
+.TP
+.B \-\-no\-cache
+Bypass cached archives when used with \-\-install
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.TP
+.B \-\-dry\-run
+Log what would be added without writing to manifest
+.TP
+.B \-\-offline
+Only use cached archives, no network requests
+.TP
+.B \-\-no\-transitive
+Skip resolution of transitive dependencies when installing
+.TP
+.B \-\-workspace <package\-name>
+Add dependency to a specific workspace member, or use \[cq]all\[cq] for all members
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli add nlohmann/json
+.IP
+.B cppkg\-cli add fmtlib/fmt \-\-name fmt \-\-tag 11.2.0 \-\-install
+.IP
+.B cppkg\-cli add nlohmann/json \-\-dry\-run
+.RE
+.TP
+.B cppkg\-cli audit
+Check installed packages against known vulnerabilities
+.RS
+Options:
+.TP
+.B \-\-level <severity>
+Filter advisories by minimum severity (low, medium, high, critical)
+.TP
+.B \-\-fix
+Suggest updates for packages with vulnerabilities
+.TP
+.B \-\-json
+Output results as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli audit
+.IP
+.B cppkg\-cli audit \-\-level high \-\-fix
+.RE
+.TP
+.B cppkg\-cli get
+Download GitHub repositories or remote zip archives into the configured package directory
+.RS
+Arguments:
+.TP
+.I repo\-urls
+Required. One or more GitHub repository URLs, GitHub API repository URLs, Gitee repository URLs, or direct zip archive URLs separated by spaces
+.RE
+.RS
+Options:
+.TP
+.B \-\-full\-project
+Install the package as a full project and skip include\-directory detection
+.TP
+.B \-\-tag <tag>
+Install a specific release tag or repository tag
+.TP
+.B \-\-branch <branch>
+Install a specific repository branch
+.TP
+.B \-\-version\-range <range>
+Install the latest release matching a semantic version range
+.TP
+.B \-\-version\-policy <policy>
+Version policy: latest\-release, latest\-prerelease, or default\-branch
+.TP
+.B \-\-prerelease
+Allow prerelease versions when selecting the latest release
+.TP
+.B \-\-no\-cache
+Bypass cached archives and refresh downloads
+.TP
+.B \-\-include\-path <path>
+Archive\-relative include directory to install; may be repeated
+.TP
+.B \-\-strip\-prefix <path>
+Archive\-relative directory to install from
+.TP
+.B \-\-patches <path>
+Project\-relative patch file to apply after extraction; may be repeated
+.TP
+.B \-\-components <name>
+Top\-level include/project entry to install; may be repeated
+.TP
+.B \-\-checksum <sha256>
+Expected archive SHA\-256 checksum
+.TP
+.B \-\-binary [spec]
+Install pre\-built binaries (platform/arch format, e.g. linux/x64)
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli get https://github.com/nlohmann/json
+.IP
+.B cppkg\-cli get https://github.com/fmtlib/fmt \-\-version\-range \[cq]^11.0.0\[cq]
+.IP
+.B cppkg\-cli get https://gitlab.com/libname/lib \-\-binary linux/x64
+.RE
+.TP
+.B cppkg\-cli import
+Import dependencies from vcpkg.json or conanfile.txt into cppkg.json
+.RS
+Arguments:
+.TP
+.I file
+Required. Path to vcpkg.json, conanfile.txt, or auto\-detect from filename
+.RE
+.RS
+Options:
+.TP
+.B \-\-dry\-run
+Show what would be imported without writing
+.TP
+.B \-\-replace
+Replace existing dependencies instead of merging
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli import vcpkg.json
+.IP
+.B cppkg\-cli import conanfile.txt \-\-dry\-run
+.IP
+.B cppkg\-cli import vcpkg.json \-\-replace
+.RE
+.TP
+.B cppkg\-cli init
+Create a cppkg.json package manifest
+.RS
+Options:
+.TP
+.B \-f, \-\-force
+Overwrite an existing cppkg.json
+.TP
+.B \-\-no\-gitignore
+Skip .gitignore creation or modification
+.TP
+.B \-\-workspace
+Create a cppkg\-workspace.json workspace configuration
+.TP
+.B \-\-template <type>
+Scaffold a project template: cmake\-header\-only, cmake\-executable, cmake\-library
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli init
+.IP
+.B cppkg\-cli init \-\-force
+.IP
+.B cppkg\-cli init \-\-workspace
+.RE
+.TP
+.B cppkg\-cli compile
+Compile C/C++ source files with cppkg include paths
+.RS
+Arguments:
+.TP
+.I files
+Required. C/C++ source files to compile
+.RE
+.RS
+Options:
+.TP
+.B \-\-compiler <command>
+Compiler command (default: c++)
+.TP
+.B \-\-toolchain <name>
+Compiler profile from cppkg\-toolchains.json
+.TP
+.B \-\-std <standard>
+C++ language standard
+.TP
+.B \-o, \-\-output <path>
+Output binary path
+.TP
+.B \-I, \-\-include\-dir <path>
+Additional include directory; may be repeated
+.TP
+.B \-\-compiler\-arg <arg>
+Additional compiler or linker argument; may be repeated
+.TP
+.B \-\-docker
+Run the compiler inside Docker
+.TP
+.B \-\-docker\-image <image>
+Docker image to use with \-\-docker
+.TP
+.B \-\-dry\-run
+Print the compiler command without executing it
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli compile src/main.cpp \-o app
+.IP
+.B cppkg\-cli compile src/main.cpp \-\-toolchain gcc\-14 \-\-docker \-\-dry\-run
+.RE
+.TP
+.B cppkg\-cli bug
+Open the cppkg\-cli issue tracker in the default browser
+.TP
+.B cppkg\-cli build
+Configure and build a CMake project with cppkg include paths
+.RS
+Options:
+.TP
+.B \-\-build\-dir <path>
+CMake build directory
+.TP
+.B \-\-compiler <command>
+C++ compiler command for CMake
+.TP
+.B \-\-toolchain <name>
+Compiler profile from cppkg\-toolchains.json
+.TP
+.B \-\-std <standard>
+C++ language standard
+.TP
+.B \-\-release
+Use Release build configuration
+.TP
+.B \-\-config <name>
+CMake build configuration
+.TP
+.B \-\-target <target>
+CMake target to build
+.TP
+.B \-\-generator <name>
+CMake generator name
+.TP
+.B \-\-cmake\-arg <arg>
+Additional CMake configure argument; may be repeated
+.TP
+.B \-\-build\-arg <arg>
+Additional CMake build argument; may be repeated
+.TP
+.B \-\-no\-cppkg\-cmake
+Do not generate or inject cppkg.cmake during configure
+.TP
+.B \-\-docker
+Run CMake configure and build inside Docker
+.TP
+.B \-\-docker\-image <image>
+Docker image to use with \-\-docker
+.TP
+.B \-\-dry\-run
+Print CMake command(s) without executing them
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli build \-\-release
+.IP
+.B cppkg\-cli build \-\-toolchain clang\-18 \-\-docker \-\-dry\-run
+.RE
+.TP
+.B cppkg\-cli compiler
+Manage compiler versions and Docker\-backed compiler profiles
+.RS
+Examples:
+.IP
+.B cppkg\-cli compiler list
+.IP
+.B cppkg\-cli compiler install clang\-18 \-\-set\-default
+.RE
+.TP
+.B cppkg\-cli create
+Scaffold a new C/C++ library project
+.RS
+Arguments:
+.TP
+.I name
+Required. Name of the new project
+.RE
+.RS
+Options:
+.TP
+.B \-\-header\-only
+Create a header\-only library (skip src/ and CMake)
+.TP
+.B \-\-c
+Create a C project instead of C++
+.TP
+.B \-\-output <dir>
+Custom output directory
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli create my\-lib
+.IP
+.B cppkg\-cli create my\-lib \-\-header\-only \-\-c \-\-output ./libs/my\-lib
+.RE
+.TP
+.B cppkg\-cli install
+Install dependencies declared in cppkg.json
+.RS
+Arguments:
+.TP
+.I packages
+Optional dependency names, repository paths, package names, or source URLs from cppkg.json
+.RE
+.RS
+Options:
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.TP
+.B \-\-no\-cache
+Bypass cached archives and refresh downloads
+.TP
+.B \-\-offline
+Only use cached archives, no network requests
+.TP
+.B \-\-dry\-run
+Log what would be installed without downloading
+.TP
+.B \-\-frozen\-lockfile
+Require cppkg\-lock.json to match cppkg.json before installing
+.TP
+.B \-\-no\-transitive
+Skip resolution of transitive dependencies
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli install
+.IP
+.B cppkg\-cli install json fmt \-\-frozen\-lockfile
+.IP
+.B cppkg\-cli install \-\-workspace \-\-no\-transitive
+.RE
+.TP
+.B cppkg\-cli integrate
+Modify CMakeLists.txt to auto\-include cppkg headers and projects
+.RS
+Options:
+.TP
+.B \-\-dry\-run
+Show what would be changed without writing
+.TP
+.B \-\-target <name>
+Integrate only for a specific CMake target
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli integrate
+.IP
+.B cppkg\-cli integrate \-\-dry\-run
+.IP
+.B cppkg\-cli integrate \-\-target my\-app
+.RE
+.TP
+.B cppkg\-cli inspect
+Inspect C/C++ source includes and report package needs
+.RS
+Options:
+.TP
+.B \-\-add
+Add recommended missing package candidates to cppkg.json
+.TP
+.B \-\-install
+Add and install recommended missing package candidates
+.TP
+.B \-f, \-\-force
+Replace existing manifest dependencies when adding
+.TP
+.B \-\-no\-cache
+Bypass cached archives when used with \-\-install
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli inspect
+.IP
+.B cppkg\-cli inspect \-\-add \-\-install
+.RE
+.TP
+.B cppkg\-cli list
+List installed packages tracked in the configured deps file
+.RS
+Options:
+.TP
+.B \-\-tree
+Show a tree view of installed dependencies
+.TP
+.B \-\-graph
+Alias for \-\-tree
+.TP
+.B \-\-json
+Output as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli list
+.IP
+.B cppkg\-cli list \-\-tree
+.RE
+.TP
+.B cppkg\-cli lockfile
+Manage cppkg\-lock.json
+.TP
+.B cppkg\-cli pack
+Create a distributable tarball of the current project
+.RS
+Options:
+.TP
+.B \-\-output <path>
+Output file path
+.RE
+.TP
+.B cppkg\-cli publish
+Publish the project as a package archive to GitHub releases
+.RS
+Options:
+.TP
+.B \-\-registry <url>
+GitHub API base URL for publishing
+.TP
+.B \-\-tag <tag>
+Release tag (defaults to latest git tag or v0.0.0)
+.TP
+.B \-\-name <name>
+Release name (defaults to the release tag)
+.TP
+.B \-\-dry\-run
+Preview what would be published without actually publishing
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli publish
+.IP
+.B cppkg\-cli publish \-\-tag v2.0.0 \-\-name \[cq]Version 2.0\[cq]
+.RE
+.TP
+.B cppkg\-cli rebuild
+Reinstall all packages from scratch (clean + install)
+.TP
+.B cppkg\-cli remove
+Remove an installed package from the configured install directory
+.RS
+Arguments:
+.TP
+.I package
+Required. Installed package name, repository path, owner/repo, or GitHub/Gitee repository URL
+.RE
+.RS
+Options:
+.TP
+.B \-\-dry\-run
+Log what would be removed without deleting
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli remove json
+.IP
+.B cppkg\-cli remove json \-\-dry\-run
+.RE
+.TP
+.B cppkg\-cli search
+Search GitHub for C/C++ libraries sorted by stars
+.RS
+Arguments:
+.TP
+.I query
+Required. Search terms, for example json parser
+.RE
+.RS
+Options:
+.TP
+.B \-\-limit <number>
+Maximum number of results to show, capped at 50
+.TP
+.B \-\-language <language>
+GitHub language qualifier
+.TP
+.B \-\-install
+Install after selecting a result; kept for compatibility because search is interactive by default
+.TP
+.B \-\-no\-interactive
+Only print results without opening the selector
+.TP
+.B \-\-select <number>
+Non\-interactive selection index to install
+.TP
+.B \-\-full\-project
+Install the selected package as a full project and skip include\-directory detection
+.TP
+.B \-\-no\-cache
+Bypass cached archives and refresh downloads
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.TP
+.B \-\-json
+Output search results as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli search json
+.IP
+.B cppkg\-cli search http client \-\-limit 20
+.RE
+.TP
+.B cppkg\-cli server
+Start a local web server for browsing and downloading packages
+.RS
+Options:
+.TP
+.B \-H, \-\-host <host>
+Host interface to bind the server to
+.TP
+.B \-p, \-\-port <port>
+Port to listen on; use 0 to choose a random open port
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli server
+.IP
+.B cppkg\-cli server \-\-host 0.0.0.0 \-\-port 4936
+.RE
+.TP
+.B cppkg\-cli status
+Check cppkg manifest, lockfile, metadata, and installed files
+.RS
+Options:
+.TP
+.B \-\-json
+Output as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli status
+.RE
+.TP
+.B cppkg\-cli update
+Update one installed package, or all tracked packages when no selector is provided
+.RS
+Arguments:
+.TP
+.I package
+Installed package name, repository path, owner/repo, or GitHub/Gitee repository URL
+.RE
+.RS
+Options:
+.TP
+.B \-\-full\-project
+Force full\-project reinstall; without this flag the recorded install mode is reused
+.TP
+.B \-\-tag <tag>
+Update one package from a specific release tag or repository tag
+.TP
+.B \-\-branch <branch>
+Update one package from a specific branch
+.TP
+.B \-\-version\-range <range>
+Update one package to the latest release matching a semantic version range
+.TP
+.B \-\-version\-policy <policy>
+Update one package with a version policy: latest\-release, latest\-prerelease, or default\-branch
+.TP
+.B \-\-prerelease
+Allow prerelease versions when selecting the latest release
+.TP
+.B \-\-include\-path <path>
+Archive\-relative include directory to install; may be repeated
+.TP
+.B \-\-strip\-prefix <path>
+Archive\-relative directory to install from
+.TP
+.B \-\-patches <path>
+Project\-relative patch file to apply after extraction; may be repeated
+.TP
+.B \-\-components <name>
+Top\-level include/project entry to install; may be repeated
+.TP
+.B \-\-checksum <sha256>
+Expected archive SHA\-256 checksum
+.TP
+.B \-\-no\-cache
+Bypass cached archives and refresh downloads
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli update
+.IP
+.B cppkg\-cli update fmt \-\-tag 11.2.0
+.RE
+.TP
+.B cppkg\-cli vendor
+Copy installed packages from cpp_libs/ into a vendor/ directory
+.RS
+Options:
+.TP
+.B \-\-remove\-originals
+Delete the cpp_libs/ directory after vendoring
+.TP
+.B \-\-output <dir>
+Custom output directory (defaults to vendor/)
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli vendor
+.IP
+.B cppkg\-cli vendor \-\-output ./third_party \-\-remove\-originals
+.RE
+.TP
+.B cppkg\-cli cache
+Manage downloaded archive cache
+.RS
+Examples:
+.IP
+.B cppkg\-cli cache list
+.IP
+.B cppkg\-cli cache clean \-\-older\-than 30
+.RE
+.TP
+.B cppkg\-cli clean
+Remove installed packages, cache, and lockfile
+.RS
+Options:
+.TP
+.B \-\-all
+Remove all cppkg data including cpp_libs/ and lockfile
+.TP
+.B \-f, \-\-force
+Skip confirmation prompt
+.TP
+.B \-\-dry\-run
+Show what would be removed without deleting
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.TP
+.B cppkg\-cli cmake
+Generate a cppkg.cmake integration helper
+.RS
+Options:
+.TP
+.B \-o, \-\-output <path>
+Project\-relative output path
+.TP
+.B \-f, \-\-force
+Overwrite an existing cppkg.cmake
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli cmake
+.IP
+.B cppkg\-cli cmake \-\-output cmake/cppkg.cmake \-\-force
+.RE
+.TP
+.B cppkg\-cli completion
+Generate shell completion scripts
+.RS
+Arguments:
+.TP
+.I shell
+Required. Shell type: bash, zsh, fish, or powershell
+.RE
+.TP
+.B cppkg\-cli config
+Manage project\-level cppkg settings in ./cppkg.config.json
+.RS
+Examples:
+.IP
+.B cppkg\-cli config list
+.IP
+.B cppkg\-cli config set cacheDirName cache
+.RE
+.TP
+.B cppkg\-cli diff
+Show differences between manifest and lockfile
+.RS
+Options:
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.TP
+.B cppkg\-cli diagnose
+Diagnose the environment for cppkg\-cli
+.RS
+Options:
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.TP
+.B cppkg\-cli docs
+Open the cppkg\-cli documentation site in the default browser
+.TP
+.B cppkg\-cli home
+Open the cppkg\-cli GitHub repository in the default browser
+.TP
+.B cppkg\-cli env
+Show system environment diagnostics
+.RS
+Options:
+.TP
+.B \-\-json
+Output as JSON
+.RE
+.TP
+.B cppkg\-cli exec
+Run a command with CPPKG_INCLUDE_DIR and CPPKG_PROJECTS_DIR in environment
+.RS
+Arguments:
+.TP
+.I command
+Required. Command and arguments to execute
+.RE
+.TP
+.B cppkg\-cli graph
+Visualize dependency graph as ASCII tree, DOT, or Mermaid
+.RS
+Options:
+.TP
+.B \-\-format <format>
+Output format: ascii, dot, or mermaid
+.TP
+.B \-\-depth <number>
+Limit dependency graph depth (requires a positive integer)
+.TP
+.B \-\-json
+Output dependency tree as JSON
+.RE
+.TP
+.B cppkg\-cli info
+Show detailed information about an installed package
+.RS
+Arguments:
+.TP
+.I package
+Required. Installed package name or selector
+.RE
+.RS
+Options:
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.TP
+.B cppkg\-cli licenses
+Scan installed packages for open\-source licenses
+.RS
+Options:
+.TP
+.B \-\-full
+Show full license text
+.TP
+.B \-\-json
+Output as JSON
+.RE
+.TP
+.B cppkg\-cli migrate
+Migrate packages to/from vcpkg and Conan formats
+.TP
+.B cppkg\-cli outdated
+Check installed packages for newer available versions
+.RS
+Arguments:
+.TP
+.I packages
+Optional package names to check; checks all if omitted
+.RE
+.RS
+Options:
+.TP
+.B \-\-http\-proxy <url>
+HTTP request proxy, overrides config
+.TP
+.B \-\-https\-proxy <url>
+HTTPS request proxy, overrides config
+.TP
+.B \-\-prerelease
+Include prerelease versions when checking
+.TP
+.B \-\-json
+Output as JSON
+.RE
+.TP
+.B cppkg\-cli self\-update
+Check for a newer version of cppkg\-cli
+.RS
+Options:
+.TP
+.B \-\-install
+Automatically install the latest version
+.RE
+.TP
+.B cppkg\-cli verify
+Verify installed packages checksums against lockfile
+.RS
+Options:
+.TP
+.B \-\-fix
+Re\-download packages that fail checksum verification
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.TP
+.B cppkg\-cli why
+Show which dependency (or dependencies) require the specified package
+.RS
+Arguments:
+.TP
+.I package
+Required. Package name or repository URL to trace
+.RE
+.RS
+Options:
+.TP
+.B \-\-json
+Output result as JSON
+.RE
+.RS
+Examples:
+.IP
+.B cppkg\-cli why fmt
+.IP
+.B cppkg\-cli why nlohmann/json
+.RE
+.SH SEE ALSO
+.BR cppkg.json (5),
+.BR cppkg-lock.json (5)

@@ -11,6 +11,7 @@ export type PublishOptions = {
   registry?: string;
   tag?: string;
   name?: string;
+  dryRun?: boolean;
 };
 
 function execCommand(command: string, args: string[], cwd?: string): Promise<string> {
@@ -108,6 +109,21 @@ export async function publishPackage(options: PublishOptions = {}) {
   const releaseName = options.name || tag;
   const projectDir = process.cwd();
   const projectName = path.basename(projectDir);
+  const apiBase = options.registry || "https://api.github.com";
+  const repoPath = `${remote.owner}/${remote.repo}`;
+
+  if (options.dryRun) {
+    logger.info("Dry run mode — no changes will be made:");
+    logger.detail("Repository", repoPath);
+    logger.detail("Release tag", tag);
+    logger.detail("Release name", releaseName);
+    logger.detail("Archive name", `${projectName}-${tag.replace(/^v/, "")}.zip`);
+    logger.detail("Project dir", projectDir);
+    logger.detail("API base", apiBase);
+    logger.success("Dry run completed. Run without --dry-run to publish.");
+    return { releaseUrl: "", tag, name: releaseName, dryRun: true };
+  }
+
   const tempDir = await fsp.mkdtemp(path.join(os.tmpdir(), "cppkg-publish-"));
   const archiveName = `${projectName}-${tag.replace(/^v/, "")}.zip`;
   const archivePath = path.join(tempDir, archiveName);
@@ -163,9 +179,6 @@ export async function publishPackage(options: PublishOptions = {}) {
       "GITHUB_TOKEN environment variable or githubToken config is required to publish.",
     );
   }
-
-  const apiBase = options.registry || "https://api.github.com";
-  const repoPath = `${remote.owner}/${remote.repo}`;
 
   logger.info(`Creating GitHub release for ${repoPath}...`);
 

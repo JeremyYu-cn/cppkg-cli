@@ -104,13 +104,22 @@ export function registerMigrateCommand(program: Command) {
         }
         return;
       }
+
+      const seen = new Set<string>();
+      const deduped = importedDeps.filter((dep) => {
+        const name = dep.name || "unknown";
+        if (seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+
       const manifestPath = path.resolve(process.cwd(), MANIFEST_FILE_NAME);
       let existingDeps: Record<string, unknown> = {};
       if (fs.existsSync(manifestPath)) {
         const existing = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
         existingDeps = (existing.dependencies as Record<string, unknown>) || {};
       }
-      for (const dep of importedDeps) {
+      for (const dep of deduped) {
         const name = dep.name || "unknown";
         if (options.replace || !(name in existingDeps)) {
           existingDeps[name] = dep.source;
@@ -118,7 +127,7 @@ export function registerMigrateCommand(program: Command) {
       }
       const outputManifest: Record<string, unknown> = { dependencies: existingDeps };
       fs.writeFileSync(manifestPath, JSON.stringify(outputManifest, null, 2) + "\n", "utf8");
-      logger.success(`Imported ${importedDeps.length} package(s) into ${MANIFEST_FILE_NAME}.`);
+      logger.success(`Imported ${deduped.length} package(s) into ${MANIFEST_FILE_NAME}.`);
     });
 
   migrate

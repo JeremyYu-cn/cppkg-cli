@@ -151,8 +151,14 @@ export function registerInspectCommand(program: Command) {
     .option("--no-cache", "Bypass cached archives when used with --install")
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
-    .action(async (options: InspectOptions) => {
+    .option("--json", "Output result as JSON")
+    .action(async (options: InspectOptions & { json?: boolean }) => {
       const inspection = await inspectProjectPackages();
+
+      if (options.json) {
+        logger.raw(JSON.stringify(inspection, null, 2));
+        return;
+      }
 
       if (!inspection.filesScanned) {
         logger.warn("No C/C++ source files found in this project.");

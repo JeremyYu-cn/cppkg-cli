@@ -18,6 +18,7 @@ type SearchOptions = Pick<
 > & {
   interactive?: boolean;
   install?: boolean;
+  json?: boolean;
   language?: string;
   limit: number;
   select?: number;
@@ -242,6 +243,7 @@ export function registerSearchCommand(program: Command) {
     .option("--no-cache", "Bypass cached archives and refresh downloads")
     .option("--http-proxy <url>", "HTTP request proxy, overrides config")
     .option("--https-proxy <url>", "HTTPS request proxy, overrides config")
+    .option("--json", "Output search results as JSON")
     .action(async (queryParts: string[], options: SearchOptions) => {
       if (options.interactive === false && options.select !== undefined) {
         throw new Error("Options --no-interactive and --select cannot be used together.");
@@ -255,6 +257,11 @@ export function registerSearchCommand(program: Command) {
         ...(options.httpsProxy ? { httpsProxy: options.httpsProxy } : {}),
         ...(options.language ? { language: options.language } : {}),
       });
+
+      if (options.json) {
+        logger.raw(JSON.stringify(results, null, 2));
+        return;
+      }
 
       if (!results.length) {
         logger.warn(`No GitHub repositories found for "${query}".`);

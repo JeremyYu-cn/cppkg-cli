@@ -33,6 +33,7 @@ export type AuditResult = {
 export type AuditOptions = {
   level?: SeverityLevel;
   fix?: boolean;
+  json?: boolean;
 };
 
 const SEVERITY_ORDER: Record<SeverityLevel, number> = {
@@ -204,7 +205,9 @@ export async function auditPackages(
   const installed = await readInstalledDependencies();
 
   if (!installed.dependencies.length) {
-    logger.warn("No installed packages found to audit.");
+    if (!options.json) {
+      logger.warn("No installed packages found to audit.");
+    }
     return { results: [], totalAdvisories: 0 };
   }
 
@@ -213,9 +216,11 @@ export async function auditPackages(
   const results: AdvisoryResult[] = [];
   let totalAdvisories = 0;
 
-  logger.info(
-    `Auditing ${installed.dependencies.length} package(s) against the GitHub Advisory Database...`,
-  );
+  if (!options.json) {
+    logger.info(
+      `Auditing ${installed.dependencies.length} package(s) against the GitHub Advisory Database...`,
+    );
+  }
 
   for (const dependency of installed.dependencies) {
     const searchNames = getDependencySearchNames(dependency);
@@ -252,6 +257,10 @@ export async function auditPackages(
   }
 
   await writeAdvisoryCache(cache);
+
+  if (options.json) {
+    return { results, totalAdvisories };
+  }
 
   if (!results.length) {
     logger.success("No vulnerabilities found for installed packages.");

@@ -1,12 +1,13 @@
 import type {
   GetPkgOptions,
   InstalledDependency,
-  SourceRequest,
 } from "../types/global";
 import type { ManifestDependency } from "../public/manifest";
 import { promises as fsp } from "node:fs";
 import path from "node:path";
 import { resolveInputSource } from "./download/sources";
+import { getDependencyIdentity, readManifestSourceRequest, sourceRequestsEqual } from "./dep-utils";
+import { LockfileError } from "./errors";
 
 export const LOCK_FILE_NAME = "cppkg-lock.json";
 
@@ -16,13 +17,6 @@ export type PackageLockFile = {
   dependencies: LockedDependency[];
   lockfileVersion: 1;
 };
-
-function getDependencyIdentity(dependency: Pick<InstalledDependency, "repository">) {
-  return (
-    dependency.repository.url.trim().replace(/\/+$/, "").replace(/\.git$/i, "") ||
-    dependency.repository.path
-  );
-}
 
 function sortLockedDependencies(dependencies: LockedDependency[]) {
   return [...dependencies].sort((left, right) => {
@@ -53,84 +47,6 @@ function toLockedDependency(dependency: InstalledDependency): LockedDependency {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readManifestSourceRequest(dependency: ManifestDependency): SourceRequest {
-  const modifiers = {
-    ...(dependency.includePath?.length ? { includePath: dependency.includePath } : {}),
-    ...(dependency.stripPrefix ? { stripPrefix: dependency.stripPrefix } : {}),
-    ...(dependency.patches?.length ? { patches: dependency.patches } : {}),
-    ...(dependency.components?.length ? { components: dependency.components } : {}),
-    ...(dependency.checksum ? { checksum: dependency.checksum } : {}),
-  };
-
-  if (dependency.tag) {
-    return {
-      ...modifiers,
-      type: "tag",
-      value: dependency.tag,
-    };
-  }
-
-  if (dependency.branch) {
-    return {
-      ...modifiers,
-      type: "branch",
-      value: dependency.branch,
-    };
-  }
-
-  if (dependency.versionRange) {
-    return {
-      ...modifiers,
-      type: "version-range",
-      value: dependency.versionRange,
-      ...(dependency.prerelease ? { includePrerelease: true } : {}),
-    };
-  }
-
-  if (dependency.versionPolicy === "default-branch") {
-    return {
-      ...modifiers,
-      type: "default-branch",
-      value: null,
-    };
-  }
-
-  return {
-    ...modifiers,
-    type: "latest-release",
-    value: null,
-    ...(dependency.prerelease || dependency.versionPolicy === "latest-prerelease"
-      ? { includePrerelease: true }
-      : {}),
-  };
-}
-
-function sourceRequestsEqual(left: SourceRequest | undefined, right: SourceRequest) {
-  const arraysEqual = (
-    leftValues: string[] | undefined,
-    rightValues: string[] | undefined,
-  ) => {
-    const normalizedLeft = leftValues ?? [];
-    const normalizedRight = rightValues ?? [];
-
-    return (
-      normalizedLeft.length === normalizedRight.length &&
-      normalizedLeft.every((value, index) => value === normalizedRight[index])
-    );
-  };
-
-  return (
-    left?.type === right.type &&
-    (left.value ?? null) === (right.value ?? null) &&
-    Boolean(left.includePrerelease) === Boolean(right.includePrerelease) &&
-    arraysEqual(left.includePath, right.includePath) &&
-    (left.stripPrefix ?? null) === (right.stripPrefix ?? null) &&
-    arraysEqual(left.patches, right.patches) &&
-    arraysEqual(left.components, right.components) &&
-    (left.checksum ?? null) === (right.checksum ?? null)
-  );
 }
 
 function resolveManifestSourceIdentity(dependency: ManifestDependency) {
@@ -172,11 +88,11 @@ export async function readPackageLock(options: { allowMissing?: boolean } = {}) 
     const parsed = JSON.parse(await fsp.readFile(lockFilePath, "utf8")) as unknown;
 
     if (!isRecord(parsed) || parsed.lockfileVersion !== 1) {
-      throw new Error(`${LOCK_FILE_NAME} must contain lockfileVersion 1.`);
+      throw new LockfileError(`${LOCK_FILE_NAME} must contain lockfileVersion 1.`);
     }
 
     if (!Array.isArray(parsed.dependencies)) {
-      throw new Error(`${LOCK_FILE_NAME} must define dependencies.`);
+      throw new LockfileError(`${LOCK_FILE_NAME} must define dependencies.`);
     }
 
     return {
